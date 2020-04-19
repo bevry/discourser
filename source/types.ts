@@ -1,5 +1,14 @@
 /* eslint camelcase:0 */
 
+export interface UpdateRequest {
+	post: {
+		raw: string
+		raw_old?: string
+		edit_reason?: string
+		cooked?: string
+	}
+}
+
 export interface Category {
 	id: number
 	name: string

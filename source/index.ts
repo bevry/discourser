@@ -1,6 +1,9 @@
 /* eslint camelcase:0, class-methods-use-this:0, func-style:0 */
 import fetch, { RequestInit } from 'node-fetch'
+import PromisePool from 'native-promise-pool'
+import { join } from 'path'
 import type {
+	UpdateRequest,
 	Category,
 	CategoriesResponse,
 	TopicsResponse,
@@ -9,20 +12,60 @@ import type {
 	PostResponse,
 	Post,
 } from './types'
-import { log } from './util.js'
+import { log, writeJSON, readJSON, exists, escape } from './util.js'
 
+export type Replacer = (content: string) => { result: string; reason?: string }
+
+export interface APIOptions {
+	host: string
+	key: string
+	username: string
+	cache?: string
+	dry?: boolean
+	rateLimitConcurrency?: number
+}
 export default class DiscourseAPI {
 	host: string
 	key: string
 	username: string
+	cache?: string
+	dry: boolean
+	pool: PromisePool<any>
 
-	constructor(host: string, key: string, username: string) {
+	constructor({
+		host,
+		key,
+		username,
+		cache,
+		dry = false,
+		rateLimitConcurrency = 60,
+	}: APIOptions) {
 		this.host = host
 		this.key = key
 		this.username = username
+		this.cache = cache
+		this.dry = dry
+		this.pool = new PromisePool(rateLimitConcurrency)
 	}
 
-	async fetch<T>(route: string, _opts?: RequestInit) {
+	async fetch<T>(route: string, _opts?: RequestInit): Promise<T> {
+		const cache =
+			(_opts?.method || 'get') === 'get' &&
+			this.cache &&
+			join(this.cache, escape(route))
+		if (cache && (await exists(cache))) {
+			log(`reading ${route} from cache ${cache}`)
+			const result = await readJSON(cache)
+			return (result as unknown) as T
+		}
+		const result = await this.pool.open(() => this._fetch(route, _opts))
+		if (cache) {
+			writeJSON(cache, result)
+		}
+		return result
+	}
+
+	async _fetch<T>(route: string, _opts?: RequestInit): Promise<T> {
 		const opts: RequestInit = {
 			..._opts,
 			headers: {
@@ -34,13 +77,15 @@ export default class DiscourseAPI {
 			},
 		}
 
-		const retry = (seconds: number) =>
-			new Promise<T>((resolve, reject) => {
+		const retry = (seconds: number) => {
+			log(`waiting for ${seconds} seconds on ${route}`)
+			return new Promise<T>((resolve, reject) => {
 				setTimeout(
-					() => this.fetch<T>(route, _opts).then(resolve),
+					() => this._fetch<T>(route, _opts).then(resolve),
 					(seconds || 60) * 1000
 				)
 			})
+		}
 
 		try {
 			const res = await fetch(route, opts)
@@ -67,7 +112,6 @@ export default class DiscourseAPI {
 			if (typeof (data as any).errors !== 'undefined') {
 				const wait: number = (data as any).extras?.wait_seconds
 				if (wait != null) {
-					// log(`waiting for ${wait} seconds on ${route}`)
 					return await retry(wait + 1)
 				}
 				log({ data, route, opts })
@@ -138,29 +182,38 @@ export default class DiscourseAPI {
 		return this.fetch<Post>(url)
 	}
 
-	async rebakePost(postID: number): Promise<Post> {
-		const url = `${this.host}/posts/${postID}/rebake`
-		const response = await this.fetch<PostResponse>(url, {
-			method: 'put',
-		})
-		return response.post
-	}
+	// async rebakePost(postID: number): Promise<Post> {
+	// 	const url = `${this.host}/posts/${postID}/rebake`
+	// 	log('rebaking', postID)
+	// 	const response = await this.fetch<PostResponse>(url, {
+	// 		method: 'put',
+	// 	})
+	// 	log('rebaked', postID)
+	// 	return response.post
+	// }
 
 	async updatePost(
 		postID: number,
 		content: string,
-		reason: string = 'api update'
+		reason: string = 'api update',
+		old?: string
 	): Promise<Post> {
+		const data: UpdateRequest = {
+			post: {
+				raw: content,
+				edit_reason: reason,
+			},
+		}
+		if (old) {
+			data.post.raw_old = old
+		}
+		log('updating', postID, 'with', data)
 		const url = `${this.host}/posts/${postID}.json`
 		const response = await this.fetch<PostResponse>(url, {
 			method: 'put',
-			body: JSON.stringify({
-				post: {
-					raw: content,
-					edit_reason: reason,
-				},
-			}),
+			body: JSON.stringify(data),
 		})
+		log('updated', postID)
 		return response.post
 	}
 
@@ -183,7 +236,13 @@ export default class DiscourseAPI {
 		return topics
 	}
 
-	async getPosts(): Promise<Post[]> {
+	async getPosts(postIDs?: number[]): Promise<Post[]> {
+		// fetch only specific ids
+		if (postIDs) {
+			return Promise.all(postIDs.map((postID: number) => this.getPost(postID)))
+		}
+
+		// fetch all of them
 		const topics = await this.getTopics()
 		const postsOfTopics = await Promise.all(
 			topics.map((topic) => this.getPostsOfTopic(topic.id))
@@ -222,44 +281,61 @@ export default class DiscourseAPI {
 	}
 
 	async findAndReplacePost(
-		post: Post,
-		find: RegExp,
-		replace: string,
-		reason?: string
+		postOrPostID: number | Post,
+		replacer: Replacer
 	): Promise<Post | null> {
-		let result: string
-		try {
-			result = post.raw.replace(find, replace)
-		} catch (err) {
-			console.error({ err })
-			log('replaced failed on post', post.id, { post })
-			process.exit(-1)
-		}
-		if (post.raw !== result) {
-			log('updating', post.id, { post, result })
-			const response = await this.updatePost(post.id, result, reason)
-			log('updated', post.id, { response })
-			return response
-		}
-		log('skipping update, replace was non-effective', post.id, { post, result })
-		return Promise.resolve(null)
-	}
+		// determine
+		let postID: number, post: Post
+		if (typeof postOrPostID === 'number') {
+			postID = postOrPostID
+			post = await this.getPost(postID)
+		} else {
+			post = postOrPostID
+			postID = post.id
 
-	async findAndReplacePostID(
-		postID: number,
-		find: RegExp,
-		replace: string,
-		reason?: string
-	) {
-		const post = await this.getPost(postID)
-		return this.findAndReplacePost(post, find, replace, reason)
+			// check
+			if (post.raw == null) {
+				log('post had no raw, fetching it', postID)
+				post = await this.getPost(postID)
+			}
+		}
+
+		// check
+		if (!post.raw) {
+			log('post had empty raw, skipping', postID)
+			return Promise.resolve(null)
+		}
+
+		// replace
+		const { result, reason } = replacer(post.raw)
+		if (result === post.raw) {
+			log('replace had no effect on raw post', postID)
+			// if (post.cooked) {
+			// 	const { result, reason } = replacer(post.cooked)
+			// 	if (result !== post.cooked) {
+			// 		log(
+			// 			'replace did have an effect on cooked post',
+			// 			postID,
+			// 			'so rebaking it'
+			// 		)
+			// 		return await this.rebakePost(postID)
+			// 	}
+			// }
+			return Promise.resolve(null)
+		}
+
+		// update
+		if (this.dry) {
+			log('skipping update on dry mode')
+			return Promise.resolve({ ...post, result, reason })
+		} else {
+			return await this.updatePost(postID, result, reason, post.raw)
+		}
 	}
 
 	async findAndReplacePosts(
 		posts: Post[],
-		find: RegExp,
-		replace: string,
-		reason?: string
+		replacer: Replacer
 	): Promise<Post[]> {
 		log(
 			'find and replace across',
@@ -268,26 +344,7 @@ export default class DiscourseAPI {
 			posts.map((i: Post) => i.id)
 		)
 		const updates = await Promise.all(
-			posts.map((post) => {
-				if (post.raw) {
-					if (find.test(post.raw) === false) {
-						log('skipping fetch', post.id, 'not found in raw')
-						return Promise.resolve(null)
-					}
-					log('found in raw', post.id)
-					return this.findAndReplacePost(post, find, replace, reason)
-				}
-				if (post.cooked) {
-					if (find.test(post.cooked) === false) {
-						log('skipping fetch', post.id, 'not found in cooked')
-						return Promise.resolve(null)
-					}
-					log('found in cooked', post.id)
-					return this.findAndReplacePostID(post.id, find, replace, reason)
-				}
-				log('missing raw and cooked', post.id)
-				return this.findAndReplacePostID(post.id, find, replace, reason)
-			})
+			posts.map((post) => this.findAndReplacePost(post, replacer))
 		)
 		const updated = updates.filter((i) => i) as Post[]
 		return updated

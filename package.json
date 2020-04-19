@@ -94,8 +94,11 @@
   "type": "commonjs",
   "main": "edition-es2018/index.js",
   "dependencies": {
+    "@bevry/links": "^1.0.0-next.1587300404.2accb75647c36ed8db4985b7e44344224fdd8e65",
     "@types/node-fetch": "^2.5.6",
-    "node-fetch": "^2.6.0"
+    "native-promise-pool": "^3.0.0",
+    "node-fetch": "^2.6.0",
+    "regexp.escape": "^1.1.0"
   },
   "devDependencies": {
     "@bevry/update-contributors": "^1.0.1",
@@ -138,7 +141,8 @@
     "our:verify:eslint": "eslint --fix --ignore-pattern '**/*.d.ts' --ignore-pattern '**/vendor/' --ignore-pattern '**/node_modules/' --ext .mjs,.js,.jsx,.ts,.tsx ./source",
     "our:verify:prettier": "prettier --write .",
     "our:verify:typescript": "tsc --noEmit --project tsconfig.json",
-    "test": "node ./edition-es2018/test.js"
+    "test": "node ./edition-es2018/test.js",
+    "start": "npm run our:compile && node bin.js"
   },
   "eslintConfig": {
     "extends": [
