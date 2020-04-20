@@ -2,12 +2,14 @@
   "name": "discourser",
   "version": "1.0.0",
   "description": "Discourse API Client",
-  "homepage": "https://github.com/bevry/discourser",
+  "homepage": "https://github.com/bevry/discourse-bevry",
   "license": "MIT",
   "keywords": [
+    "browser",
     "comment",
     "export-default",
     "extract",
+    "module",
     "timestamp",
     "typed",
     "types",
@@ -55,11 +57,11 @@
     "Benjamin Lupton (http://balupton.com)"
   ],
   "bugs": {
-    "url": "https://github.com/bevry/discourser/issues"
+    "url": "https://github.com/bevry/discourse-bevry/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/bevry/discourser.git"
+    "url": "https://github.com/bevry/discourse-bevry.git"
   },
   "engines": {
     "node": ">=10"
@@ -76,23 +78,39 @@
       "engines": false
     },
     {
-      "description": "TypeScript compiled against ES2018 for Node.js with Require for modules",
-      "directory": "edition-es2018",
+      "description": "TypeScript compiled against ESNext for web browsers with Import for modules",
+      "directory": "edition-browsers",
       "entry": "index.js",
       "tags": [
         "javascript",
-        "es2018",
+        "import"
+      ],
+      "engines": {
+        "node": false,
+        "browsers": "defaults"
+      }
+    },
+    {
+      "description": "TypeScript compiled against ESNext for Node.js with Require for modules",
+      "directory": "edition-esnext",
+      "entry": "index.js",
+      "tags": [
+        "javascript",
+        "esnext",
         "require"
       ],
       "engines": {
-        "node": "10 || 12"
+        "node": "10 || 12",
+        "browsers": false
       }
     }
   ],
   "bin": "bin.js",
   "types": "source/index.ts",
   "type": "commonjs",
-  "main": "edition-es2018/index.js",
+  "main": "edition-esnext/index.js",
+  "browser": "edition-browsers/index.js",
+  "module": "edition-browsers/index.js",
   "dependencies": {
     "errlop": "^2.1.0",
     "isomorphic-unfetch": "^3.0.0",
@@ -103,6 +121,7 @@
     "@bevry/links": "^1.0.0-next.1587300404.2accb75647c36ed8db4985b7e44344224fdd8e65",
     "@bevry/update-contributors": "^1.0.1",
     "@types/node": "^13.13.0",
+    "@types/node-fetch": "^2.5.6",
     "@typescript-eslint/eslint-plugin": "^2.28.0",
     "@typescript-eslint/parser": "^2.28.0",
     "assert-helpers": "^6.0.0",
@@ -116,12 +135,14 @@
     "surge": "^0.21.3",
     "typedoc": "^0.17.4",
     "typescript": "^3.8.3",
-    "valid-directory": "^1.6.0"
+    "valid-directory": "^1.6.0",
+    "valid-module": "^1.0.0"
   },
   "scripts": {
     "our:clean": "rm -Rf ./docs ./edition* ./es2015 ./es5 ./out ./.next",
-    "our:compile": "npm run our:compile:edition-es2018",
-    "our:compile:edition-es2018": "tsc --module commonjs --target ES2018 --outDir ./edition-es2018 --project tsconfig.json && test -d edition-es2018/source && ( mv edition-es2018/source edition-temp && rm -Rf edition-es2018 && mv edition-temp edition-es2018 ) || true",
+    "our:compile": "npm run our:compile:edition-browsers && npm run our:compile:edition-esnext",
+    "our:compile:edition-browsers": "tsc --module ESNext --target ESNext --outDir ./edition-browsers --project tsconfig.json && test -d edition-browsers/source && ( mv edition-browsers/source edition-temp && rm -Rf edition-browsers && mv edition-temp edition-browsers ) || true",
+    "our:compile:edition-esnext": "tsc --module commonjs --target ESNext --outDir ./edition-esnext --project tsconfig.json && test -d edition-esnext/source && ( mv edition-esnext/source edition-temp && rm -Rf edition-esnext && mv edition-temp edition-esnext ) || true",
     "our:deploy": "echo no need for this project",
     "our:meta": "npm run our:meta:contributors && npm run our:meta:docs && npm run our:meta:projectz",
     "our:meta:contributors": "update-contributors",
@@ -137,12 +158,13 @@
     "our:setup": "npm run our:setup:install",
     "our:setup:install": "npm install",
     "our:test": "npm run our:verify && npm test",
-    "our:verify": "npm run our:verify:directory && npm run our:verify:eslint && npm run our:verify:prettier && npm run our:verify:typescript",
+    "our:verify": "npm run our:verify:directory && npm run our:verify:eslint && npm run our:verify:module && npm run our:verify:prettier && npm run our:verify:typescript",
     "our:verify:directory": "valid-directory",
     "our:verify:eslint": "eslint --fix --ignore-pattern '**/*.d.ts' --ignore-pattern '**/vendor/' --ignore-pattern '**/node_modules/' --ext .mjs,.js,.jsx,.ts,.tsx ./source",
+    "our:verify:module": "valid-module",
     "our:verify:prettier": "prettier --write .",
     "our:verify:typescript": "tsc --noEmit --project tsconfig.json",
-    "test": "node ./edition-es2018/test.js",
+    "test": "node ./edition-esnext/test.js",
     "start": "npm run our:compile && node bin.js"
   },
   "eslintConfig": {

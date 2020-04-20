@@ -1,14 +1,15 @@
 <!-- TITLE/ -->
 
-<h1>discourse-bevry</h1>
+<h1>discourser</h1>
 
 <!-- /TITLE -->
+
 
 <!-- BADGES/ -->
 
 <span class="badge-travisci"><a href="http://travis-ci.com/bevry/discourse-bevry" title="Check this project's build status on TravisCI"><img src="https://img.shields.io/travis/com/bevry/discourse-bevry/master.svg" alt="Travis CI Build Status" /></a></span>
-<span class="badge-npmversion"><a href="https://npmjs.org/package/discourse-bevry" title="View this project on NPM"><img src="https://img.shields.io/npm/v/discourse-bevry.svg" alt="NPM version" /></a></span>
-<span class="badge-npmdownloads"><a href="https://npmjs.org/package/discourse-bevry" title="View this project on NPM"><img src="https://img.shields.io/npm/dm/discourse-bevry.svg" alt="NPM downloads" /></a></span>
+<span class="badge-npmversion"><a href="https://npmjs.org/package/discourser" title="View this project on NPM"><img src="https://img.shields.io/npm/v/discourser.svg" alt="NPM version" /></a></span>
+<span class="badge-npmdownloads"><a href="https://npmjs.org/package/discourser" title="View this project on NPM"><img src="https://img.shields.io/npm/dm/discourser.svg" alt="NPM downloads" /></a></span>
 <span class="badge-daviddm"><a href="https://david-dm.org/bevry/discourse-bevry" title="View the status of this project's dependencies on DavidDM"><img src="https://img.shields.io/david/bevry/discourse-bevry.svg" alt="Dependency Status" /></a></span>
 <span class="badge-daviddmdev"><a href="https://david-dm.org/bevry/discourse-bevry#info=devDependencies" title="View the status of this project's development dependencies on DavidDM"><img src="https://img.shields.io/david/dev/bevry/discourse-bevry.svg" alt="Dev Dependency Status" /></a></span>
 <br class="badge-separator" />
@@ -24,15 +25,17 @@
 
 <!-- /BADGES -->
 
+
 <!-- DESCRIPTION/ -->
 
-Interact with the Discourse API for Bevry purposes
+Discourse API Client
 
 <!-- /DESCRIPTION -->
 
+
 ## Usage
 
-[Complete API Documentation.](http://master.discourser.bevry.surge.sh/docs/globals.html)
+[Complete API Documentation.](http://master..bevry.surge.sh/docs/globals.html)
 
 Discourser is an API Client for the [Discourse API](https://docs.discourse.org). It special features are:
 
@@ -50,29 +53,54 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 <h2>Install</h2>
 
 <a href="https://npmjs.com" title="npm is a package manager for javascript"><h3>npm</h3></a>
-
 <h4>Install Globally</h4>
 <ul>
-<li>Install: <code>npm install --global discourse-bevry</code></li>
-<li>Executable: <code>discourse-bevry</code></li>
+<li>Install: <code>npm install --global discourser</code></li>
+<li>Executable: <code>discourser</code></li>
 </ul>
 <h4>Install Locally</h4>
 <ul>
-<li>Install: <code>npm install --save discourse-bevry</code></li>
-<li>Executable: <code>npx discourse-bevry</code></li>
-<li>Import: <code>import pkg from ('discourse-bevry')</code></li>
-<li>Require: <code>const pkg = require('discourse-bevry').default</code></li>
+<li>Install: <code>npm install --save discourser</code></li>
+<li>Executable: <code>npx discourser</code></li>
+<li>Import: <code>import pkg from ('discourser')</code></li>
+<li>Require: <code>const pkg = require('discourser').default</code></li>
 </ul>
+
+<a href="https://www.pika.dev/cdn" title="100% Native ES Modules CDN"><h3>pika</h3></a>
+
+``` html
+<script type="module">
+    import pkg from '//cdn.pika.dev/discourser/^1.0.0'
+</script>
+```
+
+<a href="https://unpkg.com" title="unpkg is a fast, global content delivery network for everything on npm"><h3>unpkg</h3></a>
+
+``` html
+<script type="module">
+    import pkg from '//unpkg.com/discourser@^1.0.0'
+</script>
+```
+
+<a href="https://jspm.io" title="Native ES Modules CDN"><h3>jspm</h3></a>
+
+``` html
+<script type="module">
+    import pkg from '//dev.jspm.io/discourser@1.0.0'
+</script>
+```
 
 <h3><a href="https://editions.bevry.me" title="Editions are the best way to produce and consume packages you care about.">Editions</a></h3>
 
 <p>This package is published with the following editions:</p>
 
-<ul><li><code>discourse-bevry/source/index.ts</code> is <a href="https://www.typescriptlang.org/" title="TypeScript is a typed superset of JavaScript that compiles to plain JavaScript. ">TypeScript</a> source code with <a href="https://babeljs.io/docs/learn-es2015/#modules" title="ECMAScript Modules">Import</a> for modules</li>
-<li><code>discourse-bevry</code> aliases <code>discourse-bevry/edition-es2018/index.js</code></li>
-<li><code>discourse-bevry/edition-es2018/index.js</code> is <a href="https://www.typescriptlang.org/" title="TypeScript is a typed superset of JavaScript that compiles to plain JavaScript. ">TypeScript</a> compiled against <a href="https://en.wikipedia.org/wiki/ECMAScript#9th_Edition_-_ECMAScript_2018" title="ECMAScript ES2018">ES2018</a> for <a href="https://nodejs.org" title="Node.js is a JavaScript runtime built on Chrome's V8 JavaScript engine">Node.js</a> with <a href="https://nodejs.org/dist/latest-v5.x/docs/api/modules.html" title="Node/CJS Modules">Require</a> for modules</li></ul>
+<ul><li><code>discourser/source/index.ts</code> is <a href="https://www.typescriptlang.org/" title="TypeScript is a typed superset of JavaScript that compiles to plain JavaScript. ">TypeScript</a> source code with <a href="https://babeljs.io/docs/learn-es2015/#modules" title="ECMAScript Modules">Import</a> for modules</li>
+<li><code>discourser/edition-browsers/index.js</code> is <a href="https://www.typescriptlang.org/" title="TypeScript is a typed superset of JavaScript that compiles to plain JavaScript. ">TypeScript</a> compiled against <a href="https://en.wikipedia.org/wiki/ECMAScript#ES.Next" title="ECMAScript Next">ESNext</a> for web browsers with <a href="https://babeljs.io/docs/learn-es2015/#modules" title="ECMAScript Modules">Import</a> for modules</li>
+<li><code>discourser</code> aliases <code>discourser/edition-esnext/index.js</code></li>
+<li><code>discourser/edition-esnext/index.js</code> is <a href="https://www.typescriptlang.org/" title="TypeScript is a typed superset of JavaScript that compiles to plain JavaScript. ">TypeScript</a> compiled against <a href="https://en.wikipedia.org/wiki/ECMAScript#ES.Next" title="ECMAScript Next">ESNext</a> for <a href="https://nodejs.org" title="Node.js is a JavaScript runtime built on Chrome's V8 JavaScript engine">Node.js</a> with <a href="https://nodejs.org/dist/latest-v5.x/docs/api/modules.html" title="Node/CJS Modules">Require</a> for modules</li></ul>
 
 <!-- /INSTALL -->
+
 
 <!-- HISTORY/ -->
 
@@ -82,6 +110,7 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 
 <!-- /HISTORY -->
 
+
 <!-- CONTRIBUTE/ -->
 
 <h2>Contribute</h2>
@@ -89,6 +118,7 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 <a href="https://github.com/bevry/discourse-bevry/blob/master/CONTRIBUTING.md#files">Discover how you can contribute by heading on over to the <code>CONTRIBUTING.md</code> file.</a>
 
 <!-- /CONTRIBUTE -->
+
 
 <!-- BACKERS/ -->
 
@@ -124,6 +154,7 @@ These amazing people have contributed code to this project:
 <a href="https://github.com/bevry/discourse-bevry/blob/master/CONTRIBUTING.md#files">Discover how you can contribute by heading on over to the <code>CONTRIBUTING.md</code> file.</a>
 
 <!-- /BACKERS -->
+
 
 <!-- LICENSE/ -->
 
