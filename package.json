@@ -1,7 +1,7 @@
 {
   "name": "discourser",
   "version": "1.0.0",
-  "description": "Discourse API Client",
+  "description": "Discourse API Client written in TypeScript for Node.js and Browser environments",
   "homepage": "https://github.com/bevry/discourse-bevry",
   "license": "MIT",
   "keywords": [

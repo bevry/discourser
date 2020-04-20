@@ -4,7 +4,6 @@
 
 <!-- /TITLE -->
 
-
 <!-- BADGES/ -->
 
 <span class="badge-travisci"><a href="http://travis-ci.com/bevry/discourse-bevry" title="Check this project's build status on TravisCI"><img src="https://img.shields.io/travis/com/bevry/discourse-bevry/master.svg" alt="Travis CI Build Status" /></a></span>
@@ -25,19 +24,9 @@
 
 <!-- /BADGES -->
 
+Discourser is an API Client for the [Discourse API](https://docs.discourse.org) written in TypeScript for Node.js and Browser environments.
 
-<!-- DESCRIPTION/ -->
-
-Discourse API Client
-
-<!-- /DESCRIPTION -->
-
-
-## Usage
-
-[Complete API Documentation.](http://master..bevry.surge.sh/docs/globals.html)
-
-Discourser is an API Client for the [Discourse API](https://docs.discourse.org). It special features are:
+Its special features are:
 
 -   TypeScript Types
 -   Respecting Rate Limits
@@ -48,11 +37,16 @@ It is currently under heavy construction, however is being used in production, a
 
 The CLI executable is currently only for Bevry use. Eventually the Bevry specific parts of it will be abstracted out. Do not use the CLI currently in your own projects.
 
+## Usage
+
+[Complete API Documentation.](http://master..bevry.surge.sh/docs/globals.html)
+
 <!-- INSTALL/ -->
 
 <h2>Install</h2>
 
 <a href="https://npmjs.com" title="npm is a package manager for javascript"><h3>npm</h3></a>
+
 <h4>Install Globally</h4>
 <ul>
 <li>Install: <code>npm install --global discourser</code></li>
@@ -68,7 +62,7 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 
 <a href="https://www.pika.dev/cdn" title="100% Native ES Modules CDN"><h3>pika</h3></a>
 
-``` html
+```html
 <script type="module">
     import pkg from '//cdn.pika.dev/discourser/^1.0.0'
 </script>
@@ -76,7 +70,7 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 
 <a href="https://unpkg.com" title="unpkg is a fast, global content delivery network for everything on npm"><h3>unpkg</h3></a>
 
-``` html
+```html
 <script type="module">
     import pkg from '//unpkg.com/discourser@^1.0.0'
 </script>
@@ -84,7 +78,7 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 
 <a href="https://jspm.io" title="Native ES Modules CDN"><h3>jspm</h3></a>
 
-``` html
+```html
 <script type="module">
     import pkg from '//dev.jspm.io/discourser@1.0.0'
 </script>
@@ -101,7 +95,6 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 
 <!-- /INSTALL -->
 
-
 <!-- HISTORY/ -->
 
 <h2>History</h2>
@@ -110,7 +103,6 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 
 <!-- /HISTORY -->
 
-
 <!-- CONTRIBUTE/ -->
 
 <h2>Contribute</h2>
@@ -118,7 +110,6 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 <a href="https://github.com/bevry/discourse-bevry/blob/master/CONTRIBUTING.md#files">Discover how you can contribute by heading on over to the <code>CONTRIBUTING.md</code> file.</a>
 
 <!-- /CONTRIBUTE -->
-
 
 <!-- BACKERS/ -->
 
@@ -154,7 +145,6 @@ These amazing people have contributed code to this project:
 <a href="https://github.com/bevry/discourse-bevry/blob/master/CONTRIBUTING.md#files">Discover how you can contribute by heading on over to the <code>CONTRIBUTING.md</code> file.</a>
 
 <!-- /BACKERS -->
-
 
 <!-- LICENSE/ -->
 
