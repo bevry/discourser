@@ -4,7 +4,6 @@
 
 <!-- /TITLE -->
 
-
 <!-- BADGES/ -->
 
 <span class="badge-travisci"><a href="http://travis-ci.com/bevry/discourse-bevry" title="Check this project's build status on TravisCI"><img src="https://img.shields.io/travis/com/bevry/discourse-bevry/master.svg" alt="Travis CI Build Status" /></a></span>
@@ -25,29 +24,33 @@
 
 <!-- /BADGES -->
 
-
 <!-- DESCRIPTION/ -->
 
 Interact with the Discourse API for Bevry purposes
 
 <!-- /DESCRIPTION -->
 
-
 ## Usage
 
-[Complete API Documentation.](http://master..bevry.surge.sh/docs/globals.html)
+[Complete API Documentation.](http://master.discourser.bevry.surge.sh/docs/globals.html)
 
-### Compatibility
+Discourser is an API Client for the [Discourse API](https://docs.discourse.org). It special features are:
 
-Node.js, Safari, and Google Chrome are supported.
+-   TypeScript Types
+-   Respecting Rate Limits
+-   Optional Heavy Caching
+-   Post Modifiers (can be used for global find and replace across all posts on the forum)
 
-Firefox is not supported, as Firefox must [add support](https://bugzilla.mozilla.org/show_bug.cgi?id=1362154) for [named capture groups](https://github.com/tc39/proposal-regexp-named-groups) for regular expressions.
+It is currently under heavy construction, however is being used in production, and will eventually stabilise.
+
+The CLI executable is currently only for Bevry use. Eventually the Bevry specific parts of it will be abstracted out. Do not use the CLI currently in your own projects.
 
 <!-- INSTALL/ -->
 
 <h2>Install</h2>
 
 <a href="https://npmjs.com" title="npm is a package manager for javascript"><h3>npm</h3></a>
+
 <h4>Install Globally</h4>
 <ul>
 <li>Install: <code>npm install --global discourse-bevry</code></li>
@@ -71,7 +74,6 @@ Firefox is not supported, as Firefox must [add support](https://bugzilla.mozilla
 
 <!-- /INSTALL -->
 
-
 <!-- HISTORY/ -->
 
 <h2>History</h2>
@@ -80,7 +82,6 @@ Firefox is not supported, as Firefox must [add support](https://bugzilla.mozilla
 
 <!-- /HISTORY -->
 
-
 <!-- CONTRIBUTE/ -->
 
 <h2>Contribute</h2>
@@ -88,7 +89,6 @@ Firefox is not supported, as Firefox must [add support](https://bugzilla.mozilla
 <a href="https://github.com/bevry/discourse-bevry/blob/master/CONTRIBUTING.md#files">Discover how you can contribute by heading on over to the <code>CONTRIBUTING.md</code> file.</a>
 
 <!-- /CONTRIBUTE -->
-
 
 <!-- BACKERS/ -->
 
@@ -124,7 +124,6 @@ These amazing people have contributed code to this project:
 <a href="https://github.com/bevry/discourse-bevry/blob/master/CONTRIBUTING.md#files">Discover how you can contribute by heading on over to the <code>CONTRIBUTING.md</code> file.</a>
 
 <!-- /BACKERS -->
-
 
 <!-- LICENSE/ -->
 

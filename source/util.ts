@@ -1,15 +1,15 @@
 import fs from 'fs'
-import { inspect } from 'util'
-import { join, dirname } from 'path'
+import { inspect as utilInspect } from 'util'
+
+export function inspect(arg: any) {
+	return utilInspect(arg, {
+		depth: 5,
+		colors: true,
+	})
+}
+
 export function log(...args: any[]) {
-	console.log(
-		...args.map((arg) =>
-			inspect(arg, {
-				depth: 5,
-				colors: true,
-			})
-		)
-	)
+	console.log(...args.map((arg) => inspect(arg)))
 }
 
 export async function mkdirp(path: string) {

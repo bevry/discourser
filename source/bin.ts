@@ -1,24 +1,48 @@
 import DiscourseAPI from './index.js'
-import { log, mkdirp } from './util.js'
-import { join } from 'path'
-import { Post } from './types.js'
+import { log, mkdirp, readJSON } from './util.js'
+import { resolve as pathResolve } from 'path'
 import links, { resolve, follow } from '@bevry/links'
 import escape from 'regexp.escape'
-
-const opts = {
-	host: 'https://discuss.bevry.me',
-	key: 'xxx',
-	username: 'xxx',
-	cache: join(process.cwd(), 'data'),
-	dry: process.argv.includes('--dry'),
-}
-const topicID = 0
+import { PostResponse } from './types.js'
+import Errlop from 'errlop'
 
 const replacements: Array<[string, string]> = [
 	['Feedback Category', 'Build Category'],
 	['Jordan B Peterson Study Group', 'Study Group'],
 	['JBP Study Group', 'Study Group'],
 ]
+
+interface Configuration {
+	host: string
+	key: string
+	username: string
+	cache?: string
+	dry?: boolean
+}
+
+async function readConfiguration(): Promise<Configuration> {
+	const cwd = process.cwd()
+	const configPath = pathResolve(
+		cwd,
+		process.env.DISCOURSER_CONFIG_PATH || 'discourser.json'
+	)
+	let config: Configuration
+	try {
+		config = await readJSON<Configuration>(configPath)
+	} catch (err) {
+		throw new Errlop(
+			`You must create a valid configuration file at: ${configPath}`,
+			err
+		)
+	}
+	if (config.cache) {
+		config.cache = pathResolve(cwd, config.cache)
+	}
+	if (config.dry == null) {
+		config.dry = process.argv.includes('--dry')
+	}
+	return config
+}
 
 // as string replacements only occur once, keep doing it until it is a no-op
 function replaceAll(content: string, find: string, replace: string): string {
@@ -38,9 +62,9 @@ function replaceAllURL(content: string, find: string, replace: string): string {
 	return content.replace(f, r)
 }
 
-function replacer(content: string): { result: string; reason?: string } {
+function modifier({ raw }: PostResponse): { result: string; reason?: string } {
 	const reasons = new Set()
-	let result = content,
+	let result = raw,
 		reason: string = 'api update'
 
 	// urls
@@ -77,19 +101,32 @@ function replacer(content: string): { result: string; reason?: string } {
 }
 
 async function cli() {
-	await mkdirp(opts.cache)
-	const api = new DiscourseAPI(opts)
-
-	let posts: Post[]
-	if (topicID) {
-		posts = await api.getPostsOfTopic(topicID)
-	} else {
-		posts = await api.getPosts()
+	// prepare
+	const config: Configuration = await readConfiguration()
+	if (config.cache) {
+		await mkdirp(config.cache)
 	}
+	const api = new DiscourseAPI(config)
 
-	const results = await api.findAndReplacePosts(posts, replacer)
-	log('results', results)
-	log('all done', results.length)
+	// fetch
+	const allPosts = await api.getPosts()
+
+	// find and replace
+	const results = await api.modifyPosts(allPosts, modifier)
+	log('found and replaced', results, results.length)
+
+	// timestamp correction for meeting topics
+	// const meetingCategoryID = 13
+	// @todo
+
+	// timestamp correction for youtube video topics
+	const youtubeCategoryID = 44
+	const youtubePostItems = await api.getPostItemsOfCategory(youtubeCategoryID)
+	const youtubePosts = await api.getPosts(youtubePostItems.map((i) => i.id))
+	youtubePosts.forEach((post) => {
+		log('youtube post:', post.id, post.raw)
+	})
+	log('youtube posts:', youtubePosts.length)
 }
 
 cli()

@@ -1,36 +1,72 @@
-/* eslint camelcase:0, class-methods-use-this:0, func-style:0 */
-import fetch, { RequestInit } from 'node-fetch'
+import fetch from 'isomorphic-unfetch'
 import PromisePool from 'native-promise-pool'
 import { join } from 'path'
+import Errlop from 'errlop'
+import { inspect, log, writeJSON, readJSON, exists, escape } from './util.js'
+
+// types
 import type {
-	UpdateRequest,
+	PostUpdateRequest,
 	Category,
 	CategoriesResponse,
-	TopicsResponse,
-	Topic,
 	PostsResponse,
 	PostResponse,
-	Post,
+	TopicResponse,
+	TopicItem,
+	CategoryResponse,
+	PostItem,
+	PostUpdateResponse,
+	PostUpdateItem,
 } from './types'
-import { log, writeJSON, readJSON, exists, escape } from './util.js'
 
-export type Replacer = (content: string) => { result: string; reason?: string }
+/** When finding and replacing, determine replacements using a method that matches this */
+export type PostModifier = (
+	post: PostResponse
+) => { result: string; reason?: string }
 
-export interface APIOptions {
+/** Configuration for Discourser */
+export interface DiscourserConfiguration {
+	/** the discourse hostname to connect to, including protocol */
 	host: string
+	/** the API key to connect with */
 	key: string
+	/** the username to behave as */
 	username: string
+	/** the cache directory to use, if we are caching */
 	cache?: string
+	/** whether or not updates should be dry (non-applying) */
 	dry?: boolean
+	/** how many concurrency requests to send to the server at once */
 	rateLimitConcurrency?: number
 }
-export default class DiscourseAPI {
-	host: string
-	key: string
-	username: string
-	cache?: string
-	dry: boolean
-	pool: PromisePool<any>
+
+interface FetchOptions {
+	/** Whether or not we should read from the cache */
+	useCache?: boolean
+	/** Only applicable to fetching topics of category */
+	page?: number
+	/** Any thing to init the fetch call with? */
+	request?: RequestInit
+}
+interface FetchConfig extends FetchOptions {
+	url: string
+}
+
+/**
+ * Discourser is an API Client for the [Discourse API](https://docs.discourse.org)
+ * It special features are:
+ * - TypeScript Types
+ * - Respecting Rate Limits
+ * - Optional Heavy Caching
+ * - Post Modifiers (can be used for global find and replace across all posts on the forum)
+ */
+export default class Discourser {
+	readonly host: string
+	readonly key: string
+	readonly username: string
+	readonly cache?: string
+	readonly dry: boolean
+	readonly pool: PromisePool<any>
 
 	constructor({
 		host,
@@ -39,7 +75,7 @@ export default class DiscourseAPI {
 		cache,
 		dry = false,
 		rateLimitConcurrency = 60,
-	}: APIOptions) {
+	}: DiscourserConfiguration) {
 		this.host = host
 		this.key = key
 		this.username = username
@@ -48,28 +84,35 @@ export default class DiscourseAPI {
 		this.pool = new PromisePool(rateLimitConcurrency)
 	}
 
-	async fetch<T>(route: string, _opts?: RequestInit): Promise<T> {
+	/** Fetch a discourse API URL, with rate limit concurrency and optional caching */
+	async fetch<T>({ url, useCache, request }: FetchConfig): Promise<T> {
+		// check if cache is enabled
 		const cache =
-			(_opts?.method || 'get') === 'get' &&
 			this.cache &&
-			join(this.cache, escape(route))
-		if (cache && (await exists(cache))) {
-			log(`reading ${route} from cache ${cache}`)
+			(request?.method || 'get') === 'get' &&
+			join(this.cache, escape(url))
+		// check if we should and can read from cache
+		if (cache && useCache !== false && (await exists(cache))) {
+			log('reading', url, 'from cache', cache)
 			const result = await readJSON(cache)
 			return (result as unknown) as T
 		}
-		const result = await this.pool.open(() => this._fetch(route, _opts))
+		// fetch
+		const result = await this.pool.open(() => this._fetch({ url, request }))
+		// write to cache if cache is enabled
 		if (cache) {
 			writeJSON(cache, result)
 		}
+		// return the result
 		return result
 	}
 
-	async _fetch<T>(route: string, _opts?: RequestInit): Promise<T> {
+	/** Fetch a discourse API URL, with rate limit retries */
+	private async _fetch<T>({ url, request }: FetchConfig): Promise<T> {
 		const opts: RequestInit = {
-			..._opts,
+			...request,
 			headers: {
-				..._opts?.headers,
+				...request?.headers,
 				Accept: 'application/json',
 				'Content-Type': 'application/json',
 				'Api-Key': this.key,
@@ -78,17 +121,20 @@ export default class DiscourseAPI {
 		}
 
 		const retry = (seconds: number) => {
-			log(`waiting for ${seconds} seconds on ${route}`)
+			log('waiting for', seconds, 'seconds on', url)
 			return new Promise<T>((resolve, reject) => {
 				setTimeout(
-					() => this._fetch<T>(route, _opts).then(resolve),
+					() =>
+						this._fetch<T>({ url, request })
+							.then(resolve)
+							.catch(reject),
 					(seconds || 60) * 1000
 				)
 			})
 		}
 
 		try {
-			const res = await fetch(route, opts)
+			const res = await fetch(url, opts)
 
 			// fetch text then parse as json, so that when errors occur we can output what it was
 			// rather than being stuck with errors like these:
@@ -104,82 +150,319 @@ export default class DiscourseAPI {
 					return await retry(60)
 				}
 				// otherwise log the error page and die
-				log({ text, route, opts })
-				process.exit(-1)
+				// log({ text, url , opts })
+				return Promise.reject(
+					new Error(`fetch of [${url}] received invalid response:\n${text}`)
+				)
 			}
 
-			// debug
+			// check if there are errors
 			if (typeof (data as any).errors !== 'undefined') {
+				// check if the error is a rate limit
 				const wait: number = (data as any).extras?.wait_seconds
 				if (wait != null) {
+					// if it was, try later
 					return await retry(wait + 1)
 				}
-				log({ data, route, opts })
-				process.exit(-1)
+
+				// otherwise fail
+				// log({ data, url, opts })
+				return Promise.reject(
+					new Error(
+						`fetch of [${url}] received failed response:\n${inspect(data)}`
+					)
+				)
 			}
 			return data
 		} catch (err) {
-			console.error(err)
-			log({ err, route, opts })
-			process.exit(-1)
+			// log({ err, url, opts })
+			return Promise.reject(
+				new Errlop(`fetch of [${url}] failed with error`, err)
+			)
 		}
 	}
 
-	async getCategories(): Promise<Category[]> {
+	// =================================
+	// CATEGORIES
+
+	/**
+	 * API Helper for {@link .getCategories}
+	 */
+	protected async getCategoriesResponse(
+		opts: FetchOptions = {}
+	): Promise<CategoriesResponse> {
 		const url = `${this.host}/categories.json`
-		const response = await this.fetch<CategoriesResponse>(url)
+		return await this.fetch<CategoriesResponse>({ url, ...opts })
+	}
+
+	/**
+	 * Fetch the whole information, for all categories of the forum
+	 */
+	async getCategories(opts: FetchOptions = {}): Promise<Category[]> {
+		const response = await this.getCategoriesResponse(opts)
 		const categories = response.category_list.categories
+		log('forum', 'contains', categories.length, 'categories')
 		return categories
 	}
 
-	async getTopicsOfCategory(
+	/**
+	 * API Helper for {@link .getTopicItemsOfCategory}
+	 * Discourse does not provide an API for fetching category information for a specific category.
+	 * Instead, all that it provides is a way of getting the topics for a specific category.
+	 */
+	protected async getCategoryResponse(
 		categoryID: number,
-		page: number = 0
-	): Promise<Topic[]> {
+		opts: FetchOptions = {}
+	): Promise<CategoryResponse> {
 		const url =
-			`${this.host}/c/${categoryID}.json` + (page !== 0 ? `?page=${page}` : '')
-		const response = await this.fetch<TopicsResponse>(url)
-		const topics: Topic[] = response.topic_list.topics
+			`${this.host}/c/${categoryID}.json` +
+			(opts.page !== 0 ? `?page=${opts.page}` : '')
+		return await this.fetch<CategoryResponse>({ url, ...opts })
+	}
+
+	// =================================
+	// TOPICS
+
+	/**
+	 * Fetch the partial information, for all topics of a specific category
+	 */
+	async getTopicItemsOfCategory(
+		categoryID: number,
+		opts: FetchOptions = {}
+	): Promise<TopicItem[]> {
+		// prepare and fetch
+		let page = opts.page || 0
+		const response = await this.getCategoryResponse(categoryID, {
+			...opts,
+			page,
+		})
+		const topics: TopicItem[] = response.topic_list.topics
 
 		// fetch the next page
 		if (topics.length === response.topic_list.per_page) {
-			log('category', categoryID, 'has more topics, fetching page', page + 1)
-			const more = await this.getTopicsOfCategory(categoryID, page + 1)
+			page += 1
+			log('category', categoryID, 'has more topics, fetching page', page)
+			const more = await this.getTopicItemsOfCategory(categoryID, {
+				...opts,
+				page,
+			})
 			topics.push(...more)
 		}
 
 		// if we are the first page, then output count as we now have all of them
 		if (page === 0) {
-			log(
-				'category',
-				categoryID,
-				'has',
-				topics.length,
-				'topics',
-				topics.map((i: Topic) => i.id)
-			)
+			const ids = topics.map((i: TopicItem) => i.id)
+			log('category', categoryID, 'has', ids.length, 'topics', ids)
 		}
+
+		// return
 		return topics
 	}
 
-	async getPostsOfTopic(topicID: number): Promise<Post[]> {
-		const url = `${this.host}/t/${topicID}/posts.json`
-		const response = await this.fetch<PostsResponse>(url)
-		const posts: Post[] = response.post_stream.posts
-		log(
-			'topic',
-			topicID,
-			'contains',
-			posts.length,
-			'posts',
-			posts.map((i: Post) => i.id)
+	/**
+	 * Fetch the partial information, for all topics of specific categoires
+	 */
+	async getTopicItemsOfCategories(
+		categoryIDs: number[],
+		opts: FetchOptions = {}
+	): Promise<TopicItem[]> {
+		// fetch topic items for specific categories
+		const topicsOfCategories = await Promise.all(
+			categoryIDs.map((id) => this.getTopicItemsOfCategory(id, opts))
 		)
+
+		// @ts-ignore
+		return topicsOfCategories.flat()
+	}
+
+	/**
+	 * Fetch the partial information, for all topics of the forum
+	 */
+	async getTopicItems(opts: FetchOptions = {}) {
+		const categories = await this.getCategories()
+		const categoryIDs = categories.map((i) => i.id)
+		return this.getTopicItemsOfCategories(categoryIDs, opts)
+	}
+
+	/**
+	 * Fetch the whole information, for a specific topic of the forum
+	 */
+	getTopic(id: number, opts: FetchOptions = {}): Promise<TopicResponse> {
+		const url = `${this.host}/t/${id}.json`
+		return this.fetch<TopicResponse>({ url, ...opts })
+	}
+
+	/**
+	 * Fetch the whole information, for all topics, or specific topics, of the forum
+	 */
+	async getTopics(
+		topicIDs?: number[] | null,
+		opts: FetchOptions = {}
+	): Promise<TopicItem[] | TopicResponse[]> {
+		// if no topics, use all topics
+		if (!topicIDs) {
+			const topics = await this.getTopicItems(opts)
+			topicIDs = topics.map((i) => i.id)
+		}
+
+		// fetch whole topics
+		return Promise.all(topicIDs.map((id) => this.getTopic(id, opts)))
+	}
+
+	// =================================
+	// POSTS
+
+	/**
+	 * API Helper for {@link .getPostItemsOfTopic}
+	 */
+	protected async getPostItemsOfTopicResponse(
+		topicID: number,
+		opts: FetchOptions = {}
+	): Promise<PostsResponse> {
+		const url = `${this.host}/t/${topicID}/posts.json`
+		const response = await this.fetch<PostsResponse>({ url, ...opts })
+		return response
+	}
+
+	/**
+	 * Fetch the partial information, for all posts of a specific topic
+	 */
+	async getPostItemsOfTopic(
+		topicID: number,
+		opts: FetchOptions = {}
+	): Promise<PostItem[]> {
+		const response = await this.getPostItemsOfTopicResponse(topicID, opts)
+		const posts: PostItem[] = response.post_stream.posts
+		const ids = posts.map((i) => i.id)
+		log('topic', topicID, 'contains', ids.length, 'posts', ids)
 		return posts
 	}
 
-	getPost(postID: number): Promise<Post> {
+	/**
+	 * Fetch the partial information, for all posts of specific topics
+	 */
+	async getPostItemsOfTopics(
+		topicIDs: number[],
+		opts: FetchOptions = {}
+	): Promise<PostItem[]> {
+		// fetch post items for specific topics
+		const postItemsOfTopics = await Promise.all(
+			topicIDs.map((id) => this.getPostItemsOfTopic(id, opts))
+		)
+
+		// @ts-ignore
+		return postItemsOfTopics.flat()
+	}
+
+	/**
+	 * Fetch the partial information, for all posts of a specific category
+	 */
+	async getPostItemsOfCategory(
+		categoryID: number,
+		opts: FetchOptions = {}
+	): Promise<PostItem[]> {
+		// fetch topics for the category
+		const topics = await this.getTopicItemsOfCategory(categoryID, opts)
+		const topicIDs = topics.map((i) => i.id)
+
+		// fetch
+		const posts = await this.getPostItemsOfTopics(topicIDs)
+		const ids = posts.map((i) => i.id)
+		log('category', categoryID, 'has', ids.length, 'posts', ids)
+		return posts
+	}
+
+	/**
+	 * Fetch the partial information, for all posts of specific categories
+	 */
+	async getPostItemsOfCategories(
+		categoryIDs: number[],
+		opts: FetchOptions = {}
+	): Promise<PostItem[]> {
+		// fetch post items for specific categories
+		const postItemsOfCategories = await Promise.all(
+			categoryIDs.map((id) => this.getPostItemsOfCategory(id, opts))
+		)
+
+		// @ts-ignore
+		return postItemsOfCategories.flat()
+	}
+
+	/**
+	 * Fetch the partial information, for all posts of the forum
+	 */
+	async getPostItems(opts: FetchOptions = {}): Promise<PostItem[]> {
+		const categories = await this.getCategories()
+		const categoryIDs = categories.map((i) => i.id)
+		return this.getPostItemsOfCategories(categoryIDs, opts)
+	}
+
+	/**
+	 * Fetch the whole information, for a specific post of the forum
+	 */
+	getPost(id: number, opts: FetchOptions = {}): Promise<PostResponse> {
+		const url = `${this.host}/posts/${id}.json`
+		return this.fetch<PostResponse>({ url, ...opts })
+	}
+
+	/**
+	 * Fetch the whole information, for all posts, or specific posts, of the forum
+	 */
+	async getPosts(
+		postIDs?: number[] | null,
+		opts: FetchOptions = {}
+	): Promise<PostResponse[]> {
+		// if no posts, use all
+		if (!postIDs) {
+			const posts = await this.getPostItems(opts)
+			postIDs = posts.map((i) => i.id)
+		}
+
+		// fetch whole posts
+		return await Promise.all(postIDs.map((id) => this.getPost(id, opts)))
+	}
+
+	// =================================
+	// POSTS: UPDATING
+
+	/**
+	 * Update a post with the content
+	 * @param postID the identifier of the post to update
+	 * @param content the new raw content for the post
+	 * @param reason the reason, if provided, for modifying the post
+	 * @param old if the old raw content is provided, then the update verified that you are working with the latest post content before applying the update
+	 */
+	async updatePost(
+		postID: number,
+		content: string,
+		reason: string = 'api update',
+		old?: string
+	): Promise<PostUpdateItem> {
+		// prepare the request
+		const data: PostUpdateRequest = {
+			post: {
+				raw: content,
+				edit_reason: reason,
+			},
+		}
+		if (old) {
+			data.post.raw_old = old
+		}
+
+		// send the update
+		log('updating', postID, 'with', data)
 		const url = `${this.host}/posts/${postID}.json`
-		return this.fetch<Post>(url)
+		const response = await this.fetch<PostUpdateResponse>({
+			url,
+			request: {
+				method: 'put',
+				body: JSON.stringify(data),
+			},
+		})
+
+		// return the response
+		log('updated', postID)
+		return response.post
 	}
 
 	// async rebakePost(postID: number): Promise<Post> {
@@ -192,126 +475,31 @@ export default class DiscourseAPI {
 	// 	return response.post
 	// }
 
-	async updatePost(
-		postID: number,
-		content: string,
-		reason: string = 'api update',
-		old?: string
-	): Promise<Post> {
-		const data: UpdateRequest = {
-			post: {
-				raw: content,
-				edit_reason: reason,
-			},
-		}
-		if (old) {
-			data.post.raw_old = old
-		}
-		log('updating', postID, 'with', data)
-		const url = `${this.host}/posts/${postID}.json`
-		const response = await this.fetch<PostResponse>(url, {
-			method: 'put',
-			body: JSON.stringify(data),
-		})
-		log('updated', postID)
-		return response.post
-	}
-
-	async getTopics(): Promise<Topic[]> {
-		const categories = await this.getCategories()
-		const topicsOfCategories = await Promise.all(
-			categories.map((category) => this.getTopicsOfCategory(category.id))
-		)
-		// @ts-ignore
-		const topics: Topic[] = topicsOfCategories.flat()
-		log(
-			'forum has',
-			categories.length,
-			'categories',
-			'and',
-			topics.length,
-			'topics',
-			topics.map((i: Topic) => i.id)
-		)
-		return topics
-	}
-
-	async getPosts(postIDs?: number[]): Promise<Post[]> {
-		// fetch only specific ids
-		if (postIDs) {
-			return Promise.all(postIDs.map((postID: number) => this.getPost(postID)))
-		}
-
-		// fetch all of them
-		const topics = await this.getTopics()
-		const postsOfTopics = await Promise.all(
-			topics.map((topic) => this.getPostsOfTopic(topic.id))
-		)
-		// @ts-ignore
-		const posts: Post[] = postsOfTopics.flat()
-		log(
-			'forum has',
-			topics.length,
-			'topics',
-			topics.map((i: Topic) => i.id),
-			'and',
-			posts.length,
-			'posts',
-			posts.map((i: Post) => i.id)
-		)
-		return posts
-	}
-
-	async getPostsOfCategory(categoryID: number): Promise<Post[]> {
-		const topics = await this.getTopicsOfCategory(categoryID)
-		const postsOfTopics = await Promise.all(
-			topics.map((topic) => this.getPostsOfTopic(topic.id))
-		)
-		// @ts-ignore
-		const posts: Post[] = postsOfTopics.flat()
-		log(
-			'category',
-			categoryID,
-			'has',
-			posts.length,
-			'posts',
-			posts.map((i: Post) => i.id)
-		)
-		return posts
-	}
-
-	async findAndReplacePost(
-		postOrPostID: number | Post,
-		replacer: Replacer
-	): Promise<Post | null> {
-		// determine
-		let postID: number, post: Post
-		if (typeof postOrPostID === 'number') {
-			postID = postOrPostID
-			post = await this.getPost(postID)
-		} else {
-			post = postOrPostID
-			postID = post.id
-
-			// check
-			if (post.raw == null) {
-				log('post had no raw, fetching it', postID)
-				post = await this.getPost(postID)
-			}
+	/**
+	 * Modify a post using a modifier
+	 */
+	async modifyPost(
+		post: PostResponse,
+		modifier: PostModifier
+	): Promise<PostUpdateItem | null> {
+		// check if we received a post item, insted of a post response
+		if (post.raw == null) {
+			log('post had no raw, fetching it', post.id)
+			post = await this.getPost(post.id)
 		}
 
 		// check
 		if (!post.raw) {
-			log('post had empty raw, skipping', postID)
+			log('post had empty raw, skipping', post.id)
 			return Promise.resolve(null)
 		}
 
 		// replace
-		const { result, reason } = replacer(post.raw)
+		const { result, reason } = modifier(post)
 		if (result === post.raw) {
-			log('replace had no effect on raw post', postID)
+			log('replace had no effect on raw post', post.id)
 			// if (post.cooked) {
-			// 	const { result, reason } = replacer(post.cooked)
+			// 	const { result, reason } = modifier(post.cooked)
 			// 	if (result !== post.cooked) {
 			// 		log(
 			// 			'replace did have an effect on cooked post',
@@ -324,29 +512,61 @@ export default class DiscourseAPI {
 			return Promise.resolve(null)
 		}
 
-		// update
+		// dry
 		if (this.dry) {
 			log('skipping update on dry mode')
-			return Promise.resolve({ ...post, result, reason })
-		} else {
-			return await this.updatePost(postID, result, reason, post.raw)
+			return Promise.resolve({
+				...((post as unknown) as PostUpdateItem),
+				result,
+				reason,
+			})
+		}
+
+		// update
+		try {
+			return await this.updatePost(post.id, result, reason, post.raw)
+		} catch (err) {
+			if (
+				err.message.includes(
+					'That post was edited by another user and your changes can no longer be saved.'
+				)
+			) {
+				log('trying post', post.id, 'again with invalidated cache')
+				return this.modifyPost(
+					await this.getPost(post.id, { useCache: false }),
+					modifier
+				)
+			}
+
+			return Promise.reject(new Errlop(`modifying post ${post.id} failed`, err))
 		}
 	}
 
-	async findAndReplacePosts(
-		posts: Post[],
-		replacer: Replacer
-	): Promise<Post[]> {
-		log(
-			'find and replace across',
-			posts.length,
-			'posts',
-			posts.map((i: Post) => i.id)
-		)
+	/**
+	 * Modify a post (via its post identifier) using a modifier
+	 */
+	async modifyPostID(post: number, modifier: PostModifier) {
+		return this.modifyPost(await this.getPost(post), modifier)
+	}
+
+	/**
+	 * Modify a post (via fetching the whole post from the partial post identifier) using a modifier
+	 */
+	async modifyPostItem(post: PostItem, modifier: PostModifier) {
+		return this.modifyPost(await this.getPost(post.id), modifier)
+	}
+
+	/**
+	 * Run the post modifier on all specified posts
+	 */
+	async modifyPosts(
+		posts: PostResponse[],
+		modifier: PostModifier
+	): Promise<PostUpdateItem[]> {
 		const updates = await Promise.all(
-			posts.map((post) => this.findAndReplacePost(post, replacer))
+			posts.map((post) => this.modifyPost(post, modifier))
 		)
-		const updated = updates.filter((i) => i) as Post[]
+		const updated = updates.filter((i) => i) as PostUpdateItem[]
 		return updated
 	}
 }
