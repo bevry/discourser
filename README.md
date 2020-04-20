@@ -6,11 +6,11 @@
 
 <!-- BADGES/ -->
 
-<span class="badge-travisci"><a href="http://travis-ci.com/bevry/discourse-bevry" title="Check this project's build status on TravisCI"><img src="https://img.shields.io/travis/com/bevry/discourse-bevry/master.svg" alt="Travis CI Build Status" /></a></span>
+<span class="badge-travisci"><a href="http://travis-ci.com/bevry/discourser" title="Check this project's build status on TravisCI"><img src="https://img.shields.io/travis/com/bevry/discourser/master.svg" alt="Travis CI Build Status" /></a></span>
 <span class="badge-npmversion"><a href="https://npmjs.org/package/discourser" title="View this project on NPM"><img src="https://img.shields.io/npm/v/discourser.svg" alt="NPM version" /></a></span>
 <span class="badge-npmdownloads"><a href="https://npmjs.org/package/discourser" title="View this project on NPM"><img src="https://img.shields.io/npm/dm/discourser.svg" alt="NPM downloads" /></a></span>
-<span class="badge-daviddm"><a href="https://david-dm.org/bevry/discourse-bevry" title="View the status of this project's dependencies on DavidDM"><img src="https://img.shields.io/david/bevry/discourse-bevry.svg" alt="Dependency Status" /></a></span>
-<span class="badge-daviddmdev"><a href="https://david-dm.org/bevry/discourse-bevry#info=devDependencies" title="View the status of this project's development dependencies on DavidDM"><img src="https://img.shields.io/david/dev/bevry/discourse-bevry.svg" alt="Dev Dependency Status" /></a></span>
+<span class="badge-daviddm"><a href="https://david-dm.org/bevry/discourser" title="View the status of this project's dependencies on DavidDM"><img src="https://img.shields.io/david/bevry/discourser.svg" alt="Dependency Status" /></a></span>
+<span class="badge-daviddmdev"><a href="https://david-dm.org/bevry/discourser#info=devDependencies" title="View the status of this project's development dependencies on DavidDM"><img src="https://img.shields.io/david/dev/bevry/discourser.svg" alt="Dev Dependency Status" /></a></span>
 <br class="badge-separator" />
 <span class="badge-githubsponsors"><a href="https://github.com/sponsors/balupton" title="Donate to this project using GitHub Sponsors"><img src="https://img.shields.io/badge/github-donate-yellow.svg" alt="GitHub Sponsors donate button" /></a></span>
 <span class="badge-patreon"><a href="https://patreon.com/bevry" title="Donate to this project using Patreon"><img src="https://img.shields.io/badge/patreon-donate-yellow.svg" alt="Patreon donate button" /></a></span>
@@ -39,7 +39,7 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 
 ## Usage
 
-[Complete API Documentation.](http://master..bevry.surge.sh/docs/globals.html)
+[Complete API Documentation.](http://master.discourser.bevry.surge.sh/docs/globals.html)
 
 <!-- INSTALL/ -->
 
@@ -99,7 +99,7 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 
 <h2>History</h2>
 
-<a href="https://github.com/bevry/discourse-bevry/blob/master/HISTORY.md#files">Discover the release history by heading on over to the <code>HISTORY.md</code> file.</a>
+<a href="https://github.com/bevry/discourser/blob/master/HISTORY.md#files">Discover the release history by heading on over to the <code>HISTORY.md</code> file.</a>
 
 <!-- /HISTORY -->
 
@@ -107,7 +107,7 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 
 <h2>Contribute</h2>
 
-<a href="https://github.com/bevry/discourse-bevry/blob/master/CONTRIBUTING.md#files">Discover how you can contribute by heading on over to the <code>CONTRIBUTING.md</code> file.</a>
+<a href="https://github.com/bevry/discourser/blob/master/CONTRIBUTING.md#files">Discover how you can contribute by heading on over to the <code>CONTRIBUTING.md</code> file.</a>
 
 <!-- /CONTRIBUTE -->
 
@@ -140,9 +140,9 @@ No sponsors yet! Will you be the first?
 These amazing people have contributed code to this project:
 
 <ul><li>Benjamin Lupton</li>
-<li><a href="http://balupton.com">Benjamin Lupton</a></li></ul>
+<li><a href="http://balupton.com">Benjamin Lupton</a> — <a href="https://github.com/bevry/discourser/commits?author=balupton" title="View the GitHub contributions of Benjamin Lupton on repository bevry/discourser">view contributions</a></li></ul>
 
-<a href="https://github.com/bevry/discourse-bevry/blob/master/CONTRIBUTING.md#files">Discover how you can contribute by heading on over to the <code>CONTRIBUTING.md</code> file.</a>
+<a href="https://github.com/bevry/discourser/blob/master/CONTRIBUTING.md#files">Discover how you can contribute by heading on over to the <code>CONTRIBUTING.md</code> file.</a>
 
 <!-- /BACKERS -->
 

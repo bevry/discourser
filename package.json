@@ -2,7 +2,7 @@
   "name": "discourser",
   "version": "1.0.0",
   "description": "Discourse API Client written in TypeScript for Node.js and Browser environments",
-  "homepage": "https://github.com/bevry/discourse-bevry",
+  "homepage": "https://github.com/bevry/discourser",
   "license": "MIT",
   "keywords": [
     "browser",
@@ -57,11 +57,11 @@
     "Benjamin Lupton (http://balupton.com)"
   ],
   "bugs": {
-    "url": "https://github.com/bevry/discourse-bevry/issues"
+    "url": "https://github.com/bevry/discourser/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/bevry/discourse-bevry.git"
+    "url": "https://github.com/bevry/discourser.git"
   },
   "engines": {
     "node": ">=10"
@@ -118,7 +118,7 @@
     "regexp.escape": "^1.1.0"
   },
   "devDependencies": {
-    "@bevry/links": "^1.0.0-next.1587300404.2accb75647c36ed8db4985b7e44344224fdd8e65",
+    "@bevry/links": "^1.1.0",
     "@bevry/update-contributors": "^1.0.1",
     "@types/node": "^13.13.0",
     "@types/node-fetch": "^2.5.6",
