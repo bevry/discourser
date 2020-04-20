@@ -5,16 +5,16 @@
   "homepage": "https://github.com/bevry/discourser",
   "license": "MIT",
   "keywords": [
+    "discourse",
+    "api",
+    "client",
     "browser",
     "comment",
     "export-default",
-    "extract",
     "module",
-    "timestamp",
     "typed",
     "types",
-    "typescript",
-    "youtube"
+    "typescript"
   ],
   "badges": {
     "list": [
