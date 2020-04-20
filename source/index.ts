@@ -68,6 +68,10 @@ export default class Discourser {
 	readonly dry: boolean
 	readonly pool: PromisePool<any>
 
+	/**
+	 * Construct our Discourser instance
+	 * See {@link DiscourserConfiguration} for available configuraiton.
+	 */
 	constructor({
 		host,
 		key,
