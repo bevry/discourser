@@ -1,6 +1,21 @@
 import { YoutubeVideoData } from '../youtube'
 import { PostItem, TopicResponse } from './discourse'
 
+export interface DatabaseJSON {
+	users: {
+		[id: string]: User
+	}
+	videos: {
+		[id: string]: VideoJSON
+	}
+	series: {
+		[id: string]: SeriesJSON
+	}
+	youtube: {
+		[id: string]: YoutubeVideoData
+	}
+}
+
 export interface Database {
 	users: {
 		[id: string]: User

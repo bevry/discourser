@@ -65,7 +65,7 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 
 ``` html
 <script type="module">
-    import pkg from '//cdn.pika.dev/discourser/^1.0.0'
+    import pkg from '//cdn.pika.dev/discourser/^1.1.0'
 </script>
 ```
 
@@ -73,7 +73,7 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 
 ``` html
 <script type="module">
-    import pkg from '//unpkg.com/discourser@^1.0.0'
+    import pkg from '//unpkg.com/discourser@^1.1.0'
 </script>
 ```
 
@@ -81,7 +81,7 @@ The CLI executable is currently only for Bevry use. Eventually the Bevry specifi
 
 ``` html
 <script type="module">
-    import pkg from '//dev.jspm.io/discourser@1.0.0'
+    import pkg from '//dev.jspm.io/discourser@1.1.0'
 </script>
 ```
 
