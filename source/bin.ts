@@ -1,5 +1,5 @@
 import DiscourseAPI, { DiscourserConfiguration } from './index.js'
-import { log, mkdirp, readJSON } from './util.js'
+import { log, mkdirp, readJSON, writeJSON } from './util.js'
 import { resolve as pathResolve } from 'path'
 import links, { resolve } from '@bevry/links'
 import util from 'util'
@@ -21,7 +21,7 @@ import {
 	Discussion,
 	Series,
 	User,
-	TimestampedNote,
+	Comment,
 } from './types/bevry.js'
 
 const youtubeCategoryID = 44
@@ -143,11 +143,10 @@ async function cli() {
 
 		// prepare database
 		const database: Database = {
-			users: [],
-			youtube: {
-				videos: [],
-				series: [],
-			},
+			users: {},
+			videos: {},
+			series: {},
+			youtube: {},
 		}
 
 		// prepare topics
@@ -214,8 +213,10 @@ async function cli() {
 				const published =
 					youtube.microformat.playerMicroformatRenderer.publishDate
 				const timestamp = new Date(published)
+				database.youtube[youtubeVideoID] = youtube
 				// video
 				const author: User = {
+					id: youtube.videoDetails.channelId,
 					name: youtube.videoDetails.author,
 					profiles: [
 						{
@@ -225,6 +226,7 @@ async function cli() {
 						},
 					],
 				}
+				database.users[author.id] = author
 				const video: Video = {
 					// @todo, considerig removing
 					thread,
@@ -239,8 +241,16 @@ async function cli() {
 					series: null,
 					notes: [],
 					discussions: [],
-					timestampedNotes: [],
+					comments: [],
 					author,
+					toJSON() {
+						return {
+							...this,
+							series: this.series?.youtubeID,
+							author: this.author.id,
+							youtube: this.youtubeID,
+						}
+					},
 				}
 				// playlist
 				const seriesTag = topic.tags.filter((tag) =>
@@ -275,12 +285,21 @@ async function cli() {
 								datetime: video.datetime,
 								name: seriesTag,
 								videos: tagData.videos,
+								toJSON() {
+									return {
+										...this,
+										videos: this.videos.map((i) => i.youtubeID),
+										author: this.author.id,
+									}
+								},
 							}
 							for (const seriesVideo of tagData.videos) {
 								seriesVideo.series = series
 							}
 							tagData.youtubePlaylistID = youtubePlaylistID
-							tagData.series = video.series = series
+							database.series[
+								youtubePlaylistID
+							] = tagData.series = video.series = series
 						}
 					}
 				}
@@ -292,7 +311,8 @@ async function cli() {
 						forumURL: `${config.host}/p/${post.id}`,
 						content: post.cooked,
 						author: {
-							name: post.username,
+							id: post.username,
+							name: post.display_username,
 							profiles: [
 								{
 									service: 'bevry',
@@ -301,7 +321,15 @@ async function cli() {
 								},
 							],
 						},
+						toJSON() {
+							return {
+								...this,
+								video: this.video.youtubeID,
+								author: this.author.id,
+							}
+						},
 					}
+					database.users[note.author.id] = note.author
 					video.notes.push(note)
 
 					// check if it is timestamped
@@ -320,14 +348,21 @@ async function cli() {
 								{ suffix: ' [-—] ' }
 							)
 							if (seconds) {
-								const timestampedNote: TimestampedNote = {
+								const comment: Comment = {
 									video,
 									seconds,
 									content,
 									forumURL: note.forumURL,
 									author: note.author,
+									toJSON() {
+										return {
+											...this,
+											video: this.video.youtubeID,
+											author: note.author.id,
+										}
+									},
 								}
-								video.timestampedNotes.push(timestampedNote)
+								video.comments.push(comment)
 							}
 							// log({ seconds, innerHTML, content })
 						}
@@ -346,6 +381,9 @@ async function cli() {
 							name: link.title,
 							datetime: topic.created_at,
 							video: discussionVideo,
+							toJSON() {
+								return { ...this, video: this.video?.youtubeID }
+							},
 						}
 						video.discussions.push(discussion)
 					})
@@ -360,7 +398,7 @@ async function cli() {
 					extractYoutubePlaylistID(postElement) || post.cooked,
 				])*/
 				// add
-				database.youtube.videos.push(video)
+				database.videos[video.youtubeID] = video
 				return video
 			} catch (err) {
 				return Promise.reject(
@@ -377,13 +415,34 @@ async function cli() {
 		await Promise.all(
 			youtubeThreads.map((thread) => threadToYoutube(thread).catch((e) => e))
 		)
-		// console.log('database')
+
+		console.log('writing database')
+		await mkdirp('database')
+		await mkdirp('database/users')
+		await mkdirp('database/videos')
+		await mkdirp('database/series')
+		await mkdirp('database/youtube')
+		await writeJSON('database/index.json', database)
+		const keys = ['users', 'videos', 'series', 'youtube']
+		await Promise.all(
+			keys.map(async (key) => {
+				// @ts-ignore
+				const data = database[key]
+				await writeJSON(`database/${key}.json`, data)
+				return Promise.all(
+					Object.entries(data).map(([id, data]: [string, any]) => {
+						return writeJSON(`database/${key}/${id}.json`, data)
+					})
+				)
+			})
+		)
+		console.log('database written')
 		// console.log(util.inspect(database, {depth: 4, color: true})
 
 		// update timestamps
 		if (false) {
 			const timestampResults = await Promise.all(
-				database.youtube.videos.map(async (video) => {
+				Object.values(database.videos).map(async (video) => {
 					// prepare
 					const { thread, youtube, datetime, youtubeID } = video
 					const { topic, post } = thread

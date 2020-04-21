@@ -1,5 +1,7 @@
 import fs from 'fs'
 import { inspect as utilInspect } from 'util'
+import { resolve, dirname } from 'path'
+const cwd = process.cwd()
 
 export function inspect(arg: any) {
 	return utilInspect(arg, {
