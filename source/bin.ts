@@ -143,11 +143,15 @@ async function cli() {
 
 		// prepare database
 		const database: Database = {
-			users: [],
-			youtube: {
-				videos: [],
-				series: [],
-			},
+			users: {},
+			videos: {},
+			series: {},
+			comments: {},
+			notes: {},
+			threads: {},
+			topics: {},
+			posts: {},
+			youtube: {},
 		}
 
 		// prepare topics
@@ -197,7 +201,7 @@ async function cli() {
 		// prepare
 		async function threadToYoutube(thread: Thread): Promise<Video | null> {
 			// prepare
-			const { topic, post, replies } = thread
+			const { topicID, postID, repliesID } = thread
 			const postElement = getElement(post.cooked)
 
 			// fetch youtube vieo id

@@ -20,7 +20,12 @@ import type {
 	TopicUpdateTimestampRequest,
 	TopicUpdateTimestampResponse,
 } from './types/discourse'
-import { Thread } from './types/bevry.js'
+
+export type Thread = {
+	topic: TopicResponse
+	post: PostItem
+	replies: PostItem[]
+}
 
 /** When finding and replacing, determine replacements using a method that matches this */
 export type PostModifier = (

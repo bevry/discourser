@@ -2,10 +2,36 @@ import { YoutubeVideoData } from '../youtube'
 import { PostItem, TopicResponse } from './discourse'
 
 export interface Database {
-	users: User[]
+	users: {
+		[id: string]: User
+	}
+	videos: {
+		[id: string]: Video
+	}
+	series: {
+		[id: string]: Series
+	}
+	comments: {
+		[id: string]: Comment
+	}
+	notes: {
+		[id: string]: Note
+	}
+	threads: {
+		[id: string]: {
+			topicID: string
+			postID: string
+			repliesIDs: string[]
+		}
+	}
+	topics: {
+		[id: string]: TopicResponse
+	}
+	posts: {
+		[id: string]: PostItem
+	}
 	youtube: {
-		videos: Video[]
-		series: Series[]
+		[id: string]: YoutubeVideoData
 	}
 }
 
@@ -17,18 +43,19 @@ export interface Youtube {
 	studyURL?: string | null
 	/** utc iso string */
 	datetime: string
-	author: User
 	name: string
+	authorID: string // Author
 }
 
 export interface Note {
-	video: Video
+	videoID: string
 	forumURL: string
 	content: string
-	author: User
+	authorID: string // Author
 }
 
-export interface TimestampedNote extends Note {
+/** A comment is a timestamped note excerpt */
+export interface Comment extends Note {
 	seconds: number
 }
 
@@ -36,21 +63,19 @@ export interface Discussion {
 	forumURL: string
 	name: string
 	datetime: string
-	video?: Video | null
+	videoID?: string | null
 }
 
 export interface Video extends Youtube {
-	series?: Series | null
-	notes: Note[]
-	discussions: Discussion[]
-	timestampedNotes: TimestampedNote[]
-	// @todo, consider removing
-	youtube: YoutubeVideoData
-	thread: Thread
+	seriesID?: string | null
+	notesIDs: string[]
+	discussionsIDs: string[]
+	commentIDs: string[]
+	threadID: string
 }
 
 export interface Series extends Youtube {
-	videos: Video[]
+	videosIDs: string[]
 }
 
 export interface User {
@@ -63,10 +88,4 @@ export interface Profile {
 	value: string
 	url?: string
 	data?: object
-}
-
-export type Thread = {
-	topic: TopicResponse
-	post: PostItem
-	replies: PostItem[]
 }
