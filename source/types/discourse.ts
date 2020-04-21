@@ -1,6 +1,14 @@
 // Attempt at TypeScript Types for the Discourse API
 // https://docs.discourse.org
 
+export interface Failure {
+	success: 'OK' // docs say lowercase, reality is uppercase
+}
+export interface Success {
+	failed: 'FAILED'
+}
+export type Response = Failure & Success
+
 export interface Action {
 	can_act: boolean
 	id: number
@@ -20,6 +28,25 @@ export interface Person {
 export interface Participant extends Person {
 	post_count: number
 }
+
+// This isn't documented, but is is there on
+// https://docs.discourse.org/#tag/Topics/paths/~1t~1{id}.json/get
+export interface Link {
+	url: string
+	internal: boolean
+	reflection: boolean
+	title: string
+	clicks: number
+}
+
+/**
+ * Update a Topic Timestmap
+ * https://docs.discourse.org/#tag/Topics/paths/~1t~1{id}~1change-timestamp/put
+ */
+export interface TopicUpdateTimestampRequest {
+	timestamp: number
+}
+export type TopicUpdateTimestampResponse = Response
 
 /**
  * Update a Post
@@ -155,6 +182,7 @@ export interface TopicResponse {
 	posts_count: number
 	reply_count: number
 	slug: string
+	tags: string[] // not part of the api docs, but is there
 	title: string
 	unpinned: object
 	user_id: number
@@ -318,6 +346,7 @@ export interface PostItem {
 	hidden: boolean
 	id: number
 	incoming_link_count: number
+	link_counts: Array<Link>
 	moderator: boolean
 	name: string
 	post_number: number

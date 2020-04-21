@@ -17,7 +17,10 @@ import type {
 	PostItem,
 	PostUpdateResponse,
 	PostUpdateItem,
-} from './types'
+	TopicUpdateTimestampRequest,
+	TopicUpdateTimestampResponse,
+} from './types/discourse'
+import { Thread } from './types/bevry.js'
 
 /** When finding and replacing, determine replacements using a method that matches this */
 export type PostModifier = (
@@ -34,6 +37,8 @@ export interface DiscourserConfiguration {
 	username: string
 	/** the cache directory to use, if we are caching */
 	cache?: string
+	/** Whether or not we should read from the cache */
+	useCache?: boolean
 	/** whether or not updates should be dry (non-applying) */
 	dry?: boolean
 	/** how many concurrency requests to send to the server at once */
@@ -65,6 +70,7 @@ export default class Discourser {
 	readonly key: string
 	readonly username: string
 	readonly cache?: string
+	readonly useCache?: boolean
 	readonly dry: boolean
 	readonly pool: PromisePool<any>
 
@@ -72,20 +78,22 @@ export default class Discourser {
 	 * Construct our Discourser instance
 	 * See {@link DiscourserConfiguration} for available configuraiton.
 	 */
-	constructor({
-		host,
-		key,
-		username,
-		cache,
-		dry = false,
-		rateLimitConcurrency = 60,
-	}: DiscourserConfiguration) {
-		this.host = host
-		this.key = key
-		this.username = username
-		this.cache = cache
-		this.dry = dry
-		this.pool = new PromisePool(rateLimitConcurrency)
+	constructor(config: DiscourserConfiguration) {
+		this.host = config.host
+		this.key = config.key
+		this.username = config.username
+		this.cache = config.cache
+		this.useCache = config.useCache
+		this.dry = config.dry || false
+		this.pool = new PromisePool(config.rateLimitConcurrency || 60)
+	}
+
+	/** Get the URL of a topic */
+	getTopicURL(topic: TopicItem | TopicResponse | number): string {
+		if (typeof topic === 'number') {
+			return `${this.host}/t/${topic}`
+		}
+		return `${this.host}/t/${topic.slug}/${topic.id}`
 	}
 
 	/** Fetch a discourse API URL, with rate limit concurrency and optional caching */
@@ -96,13 +104,18 @@ export default class Discourser {
 			(request?.method || 'get') === 'get' &&
 			join(this.cache, escape(url))
 		// check if we should and can read from cache
-		if (cache && useCache !== false && (await exists(cache))) {
+		if (
+			cache &&
+			this.useCache !== false &&
+			useCache !== false &&
+			(await exists(cache))
+		) {
 			log('reading', url, 'from cache', cache)
 			const result = await readJSON(cache)
 			return (result as unknown) as T
 		}
 		// fetch
-		const result = await this.pool.open(() => this._fetch({ url, request }))
+		const result = await this.pool.open(() => this._fetch<T>({ url, request }))
 		// write to cache if cache is enabled
 		if (cache) {
 			writeJSON(cache, result)
@@ -125,7 +138,7 @@ export default class Discourser {
 		}
 
 		const retry = (seconds: number) => {
-			log('waiting for', seconds, 'seconds on', url)
+			log('waiting', seconds, 'seconds for', url)
 			return new Promise<T>((resolve, reject) => {
 				setTimeout(
 					() =>
@@ -311,6 +324,62 @@ export default class Discourser {
 
 		// fetch whole topics
 		return Promise.all(topicIDs.map((id) => this.getTopic(id, opts)))
+	}
+
+	// ---------------------------------
+	// TOPICS: UPDATING
+
+	/**
+	 * Update a topic with a new timestamp
+	 */
+	async updateTopicTimestamp(
+		topicID: number,
+		timestamp: Date | string | number
+	): Promise<TopicUpdateTimestampResponse> {
+		let time: number
+		if (typeof timestamp === 'number') {
+			time = timestamp
+		} else if (typeof timestamp === 'number') {
+			time = Number(timestamp)
+		} else if (timestamp instanceof Date) {
+			// ms to seconds
+			time = timestamp.getTime() / 1000
+		} else {
+			return Promise.reject(new Error('invalid timestamp format'))
+		}
+
+		// prepare the request
+		const request: TopicUpdateTimestampRequest = {
+			timestamp: time,
+		}
+
+		// send the update
+		log('updating', topicID, 'topic timestamp with', request)
+		const url = `${this.host}/t/${topicID}/change-timestamp`
+		const response = await this.fetch<TopicUpdateTimestampResponse>({
+			url,
+			request: {
+				method: 'put',
+				body: JSON.stringify(request),
+			},
+		})
+
+		// check it
+		if (response.success !== 'OK') {
+			return Promise.reject(
+				new Error(
+					`timestamp update of topic ${topicID} failed:\n${inspect({
+						url,
+						request,
+						response,
+					})}`
+				)
+			)
+		}
+
+		// return the response
+		log('updated', topicID)
+		return response
 	}
 
 	// =================================
@@ -572,5 +641,58 @@ export default class Discourser {
 		)
 		const updated = updates.filter((i) => i) as PostUpdateItem[]
 		return updated
+	}
+
+	// =================================
+	// THREADS
+
+	/**
+	 * Fetch the partial information, for all posts of a specific topic
+	 * Alias of {@link .getPostItemsOfTopic}.
+	 */
+	async getThread(topicID: number, opts: FetchOptions = {}): Promise<Thread> {
+		const topic = await this.getTopic(topicID, opts)
+		const [post, ...replies] = await this.getPostItemsOfTopic(topicID, opts)
+		return {
+			topic,
+			post,
+			replies,
+		}
+	}
+
+	/**
+	 * Fetch the partial information, for all posts of specific topics, grouped by topic
+	 */
+	async getThreads(
+		topicIDs: number[],
+		opts: FetchOptions = {}
+	): Promise<Thread[]> {
+		return await Promise.all(topicIDs.map((id) => this.getThread(id, opts)))
+	}
+
+	/**
+	 * Fetch the partial information, for all posts of specific categories, grouped by topic
+	 */
+	async getThreadsOfCategory(
+		categoryID: number,
+		opts: FetchOptions = {}
+	): Promise<Thread[]> {
+		// fetch topics for the category
+		const topics = await this.getTopicItemsOfCategory(categoryID, opts)
+		const topicIDs = topics.map((i) => i.id)
+		// return threads
+		return await this.getThreads(topicIDs)
+	}
+
+	/**
+	 * Fetch the partial information, for all posts of specific categories, grouped by category, then topic
+	 */
+	async getThreadsOfCategories(
+		categoryIDs: number[],
+		opts: FetchOptions = {}
+	): Promise<Thread[][]> {
+		return await Promise.all(
+			categoryIDs.map((id) => this.getThreadsOfCategory(id, opts))
+		)
 	}
 }
