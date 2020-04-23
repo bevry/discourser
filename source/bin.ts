@@ -10,6 +10,8 @@ import { JSDOM } from 'jsdom'
 import {
 	extractYoutubeID,
 	extractYoutubePlaylistID,
+	makeYoutubeTimestamp,
+	make as makeTimestamp,
 	replace as replaceTimestamps,
 } from 'extract-timestamp'
 import { getYoutubeVideo } from './youtube.js'
@@ -147,6 +149,7 @@ async function cli() {
 			videos: {},
 			series: {},
 			youtube: {},
+			transcripts: {},
 		}
 
 		// prepare topics
@@ -288,7 +291,13 @@ async function cli() {
 								toJSON() {
 									return {
 										...this,
-										videos: this.videos.map((i) => i.youtubeID),
+										videos: this.videos.map((i) => ({
+											youtubeID: i.youtubeID,
+											youtubeURL: i.youtubeURL,
+											studyURL: i.studyURL,
+											name: i.name,
+											forumURL: i.forumURL,
+										})),
 										author: this.author.id,
 									}
 								},
@@ -336,14 +345,15 @@ async function cli() {
 					const noteElement =
 						note.content.includes('my notes') && getElement(note.content)
 					if (noteElement) {
-						for (const li of noteElement.querySelectorAll('li p')) {
+						const lis = noteElement.querySelectorAll('li p')
+						for (const li of lis.values()) {
 							let seconds: number | null = null
 							const innerHTML = li.innerHTML
 							const content = replaceTimestamps(
 								innerHTML,
-								({ total }) => {
+								({ total }, match) => {
 									if (seconds == null) seconds = total
-									return ''
+									return match
 								},
 								{ suffix: ' [-—] ' }
 							)
@@ -368,6 +378,9 @@ async function cli() {
 						}
 					}
 				})
+				video.comments.sort((a, b) => a.seconds - b.seconds)
+				log({ video: youtubeVideoID, comments: video.comments.length })
+
 				// meetings => discussions
 				await Promise.all(
 					post.link_counts.map(async (link) => {
@@ -388,6 +401,43 @@ async function cli() {
 						video.discussions.push(discussion)
 					})
 				)
+
+				// transcripts
+				try {
+					const transcriptURL =
+						youtube.captions.playerCaptionsTracklistRenderer.captionTracks[0]
+							.baseUrl
+					const transcriptResponse = await fetch(transcriptURL)
+					const transcriptXML = await transcriptResponse.text()
+					const transcriptText = transcriptXML.substring(
+						transcriptXML.indexOf('<tran')
+					)
+
+					// break it down
+					const parts: string[] = []
+					getElement(transcriptText)
+						.querySelectorAll('text')
+						.forEach(function (el) {
+							const attr = el.getAttribute('start') || 0
+							const total = Math.floor(Number(attr))
+							const timestamp = makeTimestamp({ seconds: total })
+							// log(attr, total, timestamp)
+							parts.push(
+								makeYoutubeTimestamp(timestamp, youtubeVideoID, {
+									text: el.textContent || '',
+								})
+							)
+						})
+
+					// merge and save
+					database.transcripts[youtubeVideoID] = parts.join(' ')
+					log('saved these many transcript fragments', parts.length)
+				} catch (err) {
+					log('transcript error:', err)
+					// ignore failed transcripts at this point
+				}
+
+				// add
 				/* log([
 					video.youtubeURL,
 					video.forumURL,
@@ -397,7 +447,6 @@ async function cli() {
 					'playlist',
 					extractYoutubePlaylistID(postElement) || post.cooked,
 				])*/
-				// add
 				database.videos[video.youtubeID] = video
 				return video
 			} catch (err) {
@@ -422,8 +471,9 @@ async function cli() {
 		await mkdirp('database/videos')
 		await mkdirp('database/series')
 		await mkdirp('database/youtube')
+		await mkdirp('database/transcripts')
 		await writeJSON('database/index.json', database)
-		const keys = ['users', 'videos', 'series', 'youtube']
+		const keys = ['users', 'videos', 'series', 'youtube', 'transcripts']
 		await Promise.all(
 			keys.map(async (key) => {
 				// @ts-ignore
@@ -436,6 +486,7 @@ async function cli() {
 				)
 			})
 		)
+
 		console.log('database written')
 		// console.log(util.inspect(database, {depth: 4, color: true})
 

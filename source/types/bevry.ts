@@ -14,6 +14,9 @@ export interface DatabaseJSON {
 	youtube: {
 		[id: string]: YoutubeVideoData
 	}
+	transcripts: {
+		[videoID: string]: string
+	}
 }
 
 export interface Database {
@@ -29,7 +32,15 @@ export interface Database {
 	youtube: {
 		[id: string]: YoutubeVideoData
 	}
+	transcripts: {
+		[videoID: string]: string
+	}
 }
+
+// export interface TranscriptJSON {
+// 	seconds: null
+// 	content: string
+// }
 
 export interface YoutubeBase {
 	youtubeID: string
@@ -100,8 +111,16 @@ export interface Video extends VideoBase, Youtube {
 	toJSON: () => VideoJSON
 }
 
+export interface SeriesRaw {
+	youtubeID: string
+	youtubeURL: string
+	studyURL?: string | null
+	name: string
+	forumURL: string
+}
+
 export interface SeriesJSON extends YoutubeJSON {
-	videos: string[]
+	videos: SeriesRaw[]
 }
 export interface Series extends Youtube {
 	videos: Video[]
