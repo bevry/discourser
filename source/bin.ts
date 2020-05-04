@@ -13,7 +13,7 @@ import {
 	makeYoutubeTimestamp,
 	make as makeTimestamp,
 	replace as replaceTimestamps,
-} from 'extract-timestamp'
+} from 'duration-timestamp'
 import { getYoutubeVideo } from './youtube.js'
 import {
 	Database,
