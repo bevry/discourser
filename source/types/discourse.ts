@@ -40,7 +40,7 @@ export interface Link {
 }
 
 /**
- * Update a Topic Timestmap
+ * Update a Topic Timestamp
  * https://docs.discourse.org/#tag/Topics/paths/~1t~1{id}~1change-timestamp/put
  */
 export interface TopicUpdateTimestampRequest {
