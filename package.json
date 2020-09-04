@@ -189,7 +189,6 @@
     "minimumSupportNodeVersion": 12,
     "type": "package",
     "targets": [
-      "browser",
       "ES2018"
     ]
   }
