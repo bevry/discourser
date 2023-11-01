@@ -1,11 +1,9 @@
-import fetch from 'isomorphic-unfetch'
-
 export async function getYoutubeVideo(
-	videoID: string
+	videoID: string,
 ): Promise<YoutubeVideoData> {
 	const eurl = `https://youtube.googleapis.com/v/${videoID}`
 	const response = await fetch(
-		`https://www.youtube.com/get_video_info?video_id=${videoID}&el=embedded&eurl=${eurl}&sts=18333`
+		`https://www.youtube.com/get_video_info?video_id=${videoID}&el=embedded&eurl=${eurl}&sts=18333`,
 	)
 	const text = await response.text()
 	const params = new URLSearchParams(text)

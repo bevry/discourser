@@ -2,7 +2,6 @@ import DiscourseAPI, { DiscourserConfiguration } from './index.js'
 import { log, mkdirp, readJSON, writeJSON } from './util.js'
 import { resolve as pathResolve } from 'path'
 import links, { resolve } from '@bevry/links'
-import util from 'util'
 import escape from 'regexp.escape'
 import { PostResponse, TopicItem } from './types/discourse.js'
 import Errlop from 'errlop'
@@ -50,15 +49,15 @@ async function readConfiguration(): Promise<DiscourserConfiguration> {
 	const cwd = process.cwd()
 	const configPath = pathResolve(
 		cwd,
-		process.env.DISCOURSER_CONFIG_PATH || 'discourser.json'
+		process.env.DISCOURSER_CONFIG_PATH || 'discourser.json',
 	)
 	let config: DiscourserConfiguration
 	try {
 		config = await readJSON<DiscourserConfiguration>(configPath)
-	} catch (err) {
+	} catch (err: any) {
 		throw new Errlop(
 			`You must create a valid configuration file at: ${configPath}`,
-			err
+			err,
 		)
 	}
 	if (config.cache) {
@@ -257,7 +256,7 @@ async function cli() {
 				}
 				// playlist
 				const seriesTag = topic.tags.filter((tag) =>
-					tagsOfSeries.includes(tag)
+					tagsOfSeries.includes(tag),
 				)[0]
 				if (seriesTag) {
 					// get the tag map
@@ -282,7 +281,7 @@ async function cli() {
 								youtubeID: youtubePlaylistID,
 								youtubeURL: `https://youtube.com/playlist?list=${youtubePlaylistID}`,
 								forumURL: `${config.host}/search?q=${escape(
-									`tags:${seriesTag} category:${topic.category_id} order:latest_topic`
+									`tags:${seriesTag} category:${topic.category_id} order:latest_topic`,
 								)}`,
 								studyURL: `https://study.bevry.me/youtube/playlist/${youtubePlaylistID}`,
 								datetime: video.datetime,
@@ -296,7 +295,7 @@ async function cli() {
 											youtubeURL: i.youtubeURL,
 											studyURL: i.studyURL,
 											name: i.name,
-											forumURL: i.forumURL,
+											forumURL: i.forumURL as string,
 										})),
 										author: this.author.id,
 									}
@@ -306,9 +305,10 @@ async function cli() {
 								seriesVideo.series = series
 							}
 							tagData.youtubePlaylistID = youtubePlaylistID
-							database.series[
-								youtubePlaylistID
-							] = tagData.series = video.series = series
+							database.series[youtubePlaylistID] =
+								tagData.series =
+								video.series =
+									series
 						}
 					}
 				}
@@ -355,7 +355,7 @@ async function cli() {
 									if (seconds == null) seconds = total
 									return match
 								},
-								{ suffix: ' [-—] ' }
+								{ suffix: ' [-—] ' },
 							)
 							if (seconds) {
 								const comment: Comment = {
@@ -387,7 +387,7 @@ async function cli() {
 						const topic = meetingTopicsByURL[link.url]
 						if (!topic) return
 						const discussionVideo = await threadToYoutube(
-							await api.getThread(topic.id)
+							await api.getThread(topic.id),
 						)
 						const discussion: Discussion = {
 							forumURL: link.url,
@@ -399,7 +399,7 @@ async function cli() {
 							},
 						}
 						video.discussions.push(discussion)
-					})
+					}),
 				)
 
 				// transcripts
@@ -410,7 +410,7 @@ async function cli() {
 					const transcriptResponse = await fetch(transcriptURL)
 					const transcriptXML = await transcriptResponse.text()
 					const transcriptText = transcriptXML.substring(
-						transcriptXML.indexOf('<tran')
+						transcriptXML.indexOf('<tran'),
 					)
 
 					// break it down
@@ -425,7 +425,7 @@ async function cli() {
 							parts.push(
 								makeYoutubeTimestamp(timestamp, youtubeVideoID, {
 									text: el.textContent || '',
-								})
+								}),
 							)
 						})
 
@@ -449,12 +449,12 @@ async function cli() {
 				])*/
 				database.videos[video.youtubeID] = video
 				return video
-			} catch (err) {
+			} catch (err: any) {
 				return Promise.reject(
 					new Errlop(
 						`post ${post.id} for topic ${post.topic_id} failed acquire youtube data ${youtubeVideoID}`,
-						err
-					)
+						err,
+					),
 				)
 			}
 		}
@@ -462,7 +462,7 @@ async function cli() {
 		// populate database
 		const youtubeThreads = await api.getThreadsOfCategory(youtubeCategoryID)
 		await Promise.all(
-			youtubeThreads.map((thread) => threadToYoutube(thread).catch((e) => e))
+			youtubeThreads.map((thread) => threadToYoutube(thread).catch((e) => e)),
 		)
 
 		console.log('writing database')
@@ -482,9 +482,9 @@ async function cli() {
 				return Promise.all(
 					Object.entries(data).map(([id, data]: [string, any]) => {
 						return writeJSON(`database/${key}/${id}.json`, data)
-					})
+					}),
 				)
-			})
+			}),
 		)
 
 		console.log('database written')
@@ -503,7 +503,7 @@ async function cli() {
 						// continue with timestamp update
 						const result = await api.updateTopicTimestamp(
 							post.topic_id,
-							datetime
+							datetime,
 						)
 						const meta = {
 							topicID: post.topic_id,
@@ -514,19 +514,19 @@ async function cli() {
 							result,
 						}
 						return meta
-					} catch (err) {
+					} catch (err: any) {
 						// if we cannot delete, it is probably the "about topic" post
 						if (post.can_delete === false) {
 							log(
 								new Errlop(
 									'tolerated timestamp update failure on probable about topic post',
-									err
+									err,
 								),
 								{
 									post: post.id,
 									topic: post.topic_id,
 									youtube: youtubeID,
-								}
+								},
 							)
 							return Promise.resolve()
 						}
@@ -534,16 +534,16 @@ async function cli() {
 						return Promise.reject(
 							new Errlop(
 								`post ${post.id} for topic ${post.topic_id} failed to update timestamp`,
-								err
-							)
+								err,
+							),
 						)
 					}
-				})
+				}),
 			)
 			log(
 				'timestamp update results:',
 				timestampResults,
-				timestampResults.length
+				timestampResults.length,
 			)
 		}
 	} catch (err) {

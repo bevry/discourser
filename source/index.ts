@@ -1,4 +1,3 @@
-import fetch from 'isomorphic-unfetch'
 import PromisePool from 'native-promise-pool'
 import { join } from 'path'
 import Errlop from 'errlop'
@@ -23,9 +22,10 @@ import type {
 import { Thread } from './types/bevry.js'
 
 /** When finding and replacing, determine replacements using a method that matches this */
-export type PostModifier = (
-	post: PostResponse
-) => { result: string; reason?: string }
+export type PostModifier = (post: PostResponse) => {
+	result: string
+	reason?: string
+}
 
 /** Configuration for Discourser */
 export interface DiscourserConfiguration {
@@ -112,13 +112,13 @@ export default class Discourser {
 		) {
 			log('reading', url, 'from cache', cache)
 			const result = await readJSON(cache)
-			return (result as unknown) as T
+			return result as unknown as T
 		}
 		// fetch
 		const result = await this.pool.open(() => this._fetch<T>({ url, request }))
 		// write to cache if cache is enabled
 		if (cache) {
-			writeJSON(cache, result)
+			writeJSON(cache, result as any)
 		}
 		// return the result
 		return result
@@ -141,11 +141,8 @@ export default class Discourser {
 			log('waiting', seconds, 'seconds for', url)
 			return new Promise<T>((resolve, reject) => {
 				setTimeout(
-					() =>
-						this._fetch<T>({ url, request })
-							.then(resolve)
-							.catch(reject),
-					(seconds || 60) * 1000
+					() => this._fetch<T>({ url, request }).then(resolve).catch(reject),
+					(seconds || 60) * 1000,
 				)
 			})
 		}
@@ -169,7 +166,7 @@ export default class Discourser {
 				// otherwise log the error page and die
 				// log({ text, url , opts })
 				return Promise.reject(
-					new Error(`fetch of [${url}] received invalid response:\n${text}`)
+					new Error(`fetch of [${url}] received invalid response:\n${text}`),
 				)
 			}
 
@@ -186,15 +183,15 @@ export default class Discourser {
 				// log({ data, url, opts })
 				return Promise.reject(
 					new Error(
-						`fetch of [${url}] received failed response:\n${inspect(data)}`
-					)
+						`fetch of [${url}] received failed response:\n${inspect(data)}`,
+					),
 				)
 			}
 			return data
-		} catch (err) {
+		} catch (err: any) {
 			// log({ err, url, opts })
 			return Promise.reject(
-				new Errlop(`fetch of [${url}] failed with error`, err)
+				new Errlop(`fetch of [${url}] failed with error`, err),
 			)
 		}
 	}
@@ -206,7 +203,7 @@ export default class Discourser {
 	 * API Helper for {@link .getCategories}
 	 */
 	protected async getCategoriesResponse(
-		opts: FetchOptions = {}
+		opts: FetchOptions = {},
 	): Promise<CategoriesResponse> {
 		const url = `${this.host}/categories.json`
 		return await this.fetch<CategoriesResponse>({ url, ...opts })
@@ -229,7 +226,7 @@ export default class Discourser {
 	 */
 	protected async getCategoryResponse(
 		categoryID: number,
-		opts: FetchOptions = {}
+		opts: FetchOptions = {},
 	): Promise<CategoryResponse> {
 		const url =
 			`${this.host}/c/${categoryID}.json` +
@@ -245,7 +242,7 @@ export default class Discourser {
 	 */
 	async getTopicItemsOfCategory(
 		categoryID: number,
-		opts: FetchOptions = {}
+		opts: FetchOptions = {},
 	): Promise<TopicItem[]> {
 		// prepare and fetch
 		let page = opts.page || 0
@@ -281,11 +278,11 @@ export default class Discourser {
 	 */
 	async getTopicItemsOfCategories(
 		categoryIDs: number[],
-		opts: FetchOptions = {}
+		opts: FetchOptions = {},
 	): Promise<TopicItem[]> {
 		// fetch topic items for specific categories
 		const topicsOfCategories = await Promise.all(
-			categoryIDs.map((id) => this.getTopicItemsOfCategory(id, opts))
+			categoryIDs.map((id) => this.getTopicItemsOfCategory(id, opts)),
 		)
 
 		// @ts-ignore
@@ -314,7 +311,7 @@ export default class Discourser {
 	 */
 	async getTopics(
 		topicIDs?: number[] | null,
-		opts: FetchOptions = {}
+		opts: FetchOptions = {},
 	): Promise<TopicItem[] | TopicResponse[]> {
 		// if no topics, use all topics
 		if (!topicIDs) {
@@ -334,12 +331,12 @@ export default class Discourser {
 	 */
 	async updateTopicTimestamp(
 		topicID: number,
-		timestamp: Date | string | number
+		timestamp: Date | string | number,
 	): Promise<TopicUpdateTimestampResponse> {
 		let time: number
 		if (typeof timestamp === 'number') {
 			time = timestamp
-		} else if (typeof timestamp === 'number') {
+		} else if (typeof timestamp === 'string') {
 			time = Number(timestamp)
 		} else if (timestamp instanceof Date) {
 			// ms to seconds
@@ -372,8 +369,8 @@ export default class Discourser {
 						url,
 						request,
 						response,
-					})}`
-				)
+					})}`,
+				),
 			)
 		}
 
@@ -390,7 +387,7 @@ export default class Discourser {
 	 */
 	protected async getPostItemsOfTopicResponse(
 		topicID: number,
-		opts: FetchOptions = {}
+		opts: FetchOptions = {},
 	): Promise<PostsResponse> {
 		const url = `${this.host}/t/${topicID}/posts.json`
 		const response = await this.fetch<PostsResponse>({ url, ...opts })
@@ -402,7 +399,7 @@ export default class Discourser {
 	 */
 	async getPostItemsOfTopic(
 		topicID: number,
-		opts: FetchOptions = {}
+		opts: FetchOptions = {},
 	): Promise<PostItem[]> {
 		const response = await this.getPostItemsOfTopicResponse(topicID, opts)
 		const posts: PostItem[] = response.post_stream.posts
@@ -416,11 +413,11 @@ export default class Discourser {
 	 */
 	async getPostItemsOfTopics(
 		topicIDs: number[],
-		opts: FetchOptions = {}
+		opts: FetchOptions = {},
 	): Promise<PostItem[]> {
 		// fetch post items for specific topics
 		const postItemsOfTopics = await Promise.all(
-			topicIDs.map((id) => this.getPostItemsOfTopic(id, opts))
+			topicIDs.map((id) => this.getPostItemsOfTopic(id, opts)),
 		)
 
 		// @ts-ignore
@@ -432,7 +429,7 @@ export default class Discourser {
 	 */
 	async getPostItemsOfCategory(
 		categoryID: number,
-		opts: FetchOptions = {}
+		opts: FetchOptions = {},
 	): Promise<PostItem[]> {
 		// fetch topics for the category
 		const topics = await this.getTopicItemsOfCategory(categoryID, opts)
@@ -450,11 +447,11 @@ export default class Discourser {
 	 */
 	async getPostItemsOfCategories(
 		categoryIDs: number[],
-		opts: FetchOptions = {}
+		opts: FetchOptions = {},
 	): Promise<PostItem[]> {
 		// fetch post items for specific categories
 		const postItemsOfCategories = await Promise.all(
-			categoryIDs.map((id) => this.getPostItemsOfCategory(id, opts))
+			categoryIDs.map((id) => this.getPostItemsOfCategory(id, opts)),
 		)
 
 		// @ts-ignore
@@ -483,7 +480,7 @@ export default class Discourser {
 	 */
 	async getPosts(
 		postIDs?: number[] | null,
-		opts: FetchOptions = {}
+		opts: FetchOptions = {},
 	): Promise<PostResponse[]> {
 		// if no posts, use all
 		if (!postIDs) {
@@ -509,7 +506,7 @@ export default class Discourser {
 		postID: number,
 		content: string,
 		reason: string = 'api update',
-		old?: string
+		old?: string,
 	): Promise<PostUpdateItem> {
 		// prepare the request
 		const data: PostUpdateRequest = {
@@ -553,7 +550,7 @@ export default class Discourser {
 	 */
 	async modifyPost(
 		post: PostResponse,
-		modifier: PostModifier
+		modifier: PostModifier,
 	): Promise<PostUpdateItem | null> {
 		// check if we received a post item, insted of a post response
 		if (post.raw == null) {
@@ -589,7 +586,7 @@ export default class Discourser {
 		if (this.dry) {
 			log('skipping update on dry mode')
 			return Promise.resolve({
-				...((post as unknown) as PostUpdateItem),
+				...(post as unknown as PostUpdateItem),
 				result,
 				reason,
 			})
@@ -598,16 +595,16 @@ export default class Discourser {
 		// update
 		try {
 			return await this.updatePost(post.id, result, reason, post.raw)
-		} catch (err) {
+		} catch (err: any) {
 			if (
 				err.message.includes(
-					'That post was edited by another user and your changes can no longer be saved.'
+					'That post was edited by another user and your changes can no longer be saved.',
 				)
 			) {
 				log('trying post', post.id, 'again with invalidated cache')
 				return this.modifyPost(
 					await this.getPost(post.id, { useCache: false }),
-					modifier
+					modifier,
 				)
 			}
 
@@ -634,10 +631,10 @@ export default class Discourser {
 	 */
 	async modifyPosts(
 		posts: PostResponse[],
-		modifier: PostModifier
+		modifier: PostModifier,
 	): Promise<PostUpdateItem[]> {
 		const updates = await Promise.all(
-			posts.map((post) => this.modifyPost(post, modifier))
+			posts.map((post) => this.modifyPost(post, modifier)),
 		)
 		const updated = updates.filter((i) => i) as PostUpdateItem[]
 		return updated
@@ -665,7 +662,7 @@ export default class Discourser {
 	 */
 	async getThreads(
 		topicIDs: number[],
-		opts: FetchOptions = {}
+		opts: FetchOptions = {},
 	): Promise<Thread[]> {
 		return await Promise.all(topicIDs.map((id) => this.getThread(id, opts)))
 	}
@@ -675,7 +672,7 @@ export default class Discourser {
 	 */
 	async getThreadsOfCategory(
 		categoryID: number,
-		opts: FetchOptions = {}
+		opts: FetchOptions = {},
 	): Promise<Thread[]> {
 		// fetch topics for the category
 		const topics = await this.getTopicItemsOfCategory(categoryID, opts)
@@ -689,10 +686,10 @@ export default class Discourser {
 	 */
 	async getThreadsOfCategories(
 		categoryIDs: number[],
-		opts: FetchOptions = {}
+		opts: FetchOptions = {},
 	): Promise<Thread[][]> {
 		return await Promise.all(
-			categoryIDs.map((id) => this.getThreadsOfCategory(id, opts))
+			categoryIDs.map((id) => this.getThreadsOfCategory(id, opts)),
 		)
 	}
 }

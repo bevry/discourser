@@ -198,7 +198,7 @@ export interface TopicResponse {
 	timeline_lookup: [
 		{
 			'0': Array<object>
-		}
+		},
 	]
 }
 export interface TopicDetails {

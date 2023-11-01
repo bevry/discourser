@@ -4,9 +4,11 @@
     "esModuleInterop": true,
     "isolatedModules": true,
     "maxNodeModuleJsDepth": 5,
-    "moduleResolution": "node",
+    "moduleResolution": "Node",
     "strict": true,
-    "target": "esnext"
+    "target": "ES2018",
+    "module": "ESNext",
+    "skipLibCheck": true
   },
   "include": ["source"]
 }
