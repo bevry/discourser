@@ -146,7 +146,7 @@
   "module": "edition-browsers/index.js",
   "dependencies": {
     "duration-timestamp": "^2.25.0",
-    "errlop": "^4.6.0",
+    "errlop": "^7.2.0",
     "native-promise-pool": "^3.19.0",
     "regexp.escape": "^1.1.0"
   },
