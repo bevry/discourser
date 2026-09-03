@@ -134,13 +134,14 @@
     }
   ],
   "bin": "bin.cjs",
-  "types": "./compiled-types/",
+  "types": "./compiled-types/index.d.ts",
   "type": "module",
   "main": "edition-es2018/index.js",
   "exports": {
     "node": {
       "import": "./edition-es2018-esm/index.js",
-      "require": "./edition-es2018/index.js"
+      "require": "./edition-es2018/index.js",
+      "types": "./compiled-types/index.d.ts"
     },
     "browser": {
       "import": "./edition-browsers/index.js"
